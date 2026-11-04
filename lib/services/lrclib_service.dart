@@ -77,7 +77,7 @@ class LRCLibService {
 
     if (r.statusCode >= 500 || r.statusCode == 429) {
       throw const LRCLibNetworkException(
-        "LRCLib devolvió un error temporal.",
+        "LRCLib returned a temporary error.",
       );
     }
 
@@ -116,7 +116,7 @@ class LRCLibService {
 
     if (r.statusCode >= 500 || r.statusCode == 429) {
       throw const LRCLibNetworkException(
-        "LRCLib devolvió un error temporal.",
+        "LRCLib returned a temporary error.",
       );
     }
 
@@ -281,15 +281,15 @@ class LRCLibService {
       return await http.get(uri).timeout(const Duration(seconds: 10));
     } on SocketException {
       throw const LRCLibNetworkException(
-        "No se pudo conectar a LRCLib. Revisá tu conexión.",
+        "Could not connect to LRCLib. Check your connection.",
       );
     } on TimeoutException {
       throw const LRCLibNetworkException(
-        "LRCLib tardó demasiado en responder.",
+        "LRCLib took too long to respond.",
       );
     } on HttpException {
       throw const LRCLibNetworkException(
-        "Error técnico al consultar LRCLib.",
+        "Technical error querying LRCLib.",
       );
     }
   }

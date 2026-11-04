@@ -26,7 +26,7 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
               const Text(
-                "Encuentra letras sincronizadas\npara toda tu música",
+                "Find synced lyrics\nfor all your music",
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 18, color: Colors.white70),
               ),
@@ -44,14 +44,14 @@ class HomeScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(50),
                   ),
                 ),
-                child: const Text("Comenzar"),
+                child: const Text("Get started"),
                 onPressed: () async {
                   final granted = await AppPermissions.requestStorage();
                   if (!granted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text(
-                          "Se requieren permisos de almacenamiento para continuar.",
+                          "Storage permission is required to continue.",
                         ),
                       ),
                     );

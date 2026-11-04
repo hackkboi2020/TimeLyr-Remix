@@ -73,7 +73,7 @@ class _ScanMusicState extends State<ScanMusic> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Error al escanear la biblioteca. Intentá de nuevo.'),
+          content: Text('Error scanning the library. Try again.'),
         ),
       );
     } finally {
@@ -91,8 +91,8 @@ class _ScanMusicState extends State<ScanMusic> {
       backgroundColor: const Color(0xFF0D1B2A),
       title: Text(
         _isScanning
-            ? 'Escaneando biblioteca...'
-            : 'Desea volver a escanear su música?',
+            ? 'Scanning library...'
+            : 'Do you want to rescan your music?',
         textAlign: TextAlign.center,
         style: const TextStyle(color: Colors.white),
       ),
@@ -107,7 +107,7 @@ class _ScanMusicState extends State<ScanMusic> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  '$_scannedFiles archivos revisados • $_foundSongs canciones encontradas',
+                  '$_scannedFiles files checked • $_foundSongs songs found',
                   style: const TextStyle(color: Colors.white70, fontSize: 13),
                 ),
               ],
@@ -117,7 +117,7 @@ class _ScanMusicState extends State<ScanMusic> {
         TextButton(
           onPressed: _cancelScan,
           child: Text(
-            _isScanning ? 'Cancelar escaneo' : 'Cancelar',
+            _isScanning ? 'Cancel scan' : 'Cancel',
             style: const TextStyle(color: Colors.white),
           ),
         ),
@@ -137,7 +137,7 @@ class _ScanMusicState extends State<ScanMusic> {
                   ),
                 )
               : const Text(
-                  'Escanear Música',
+                  'Scan Music',
                   style: TextStyle(color: Colors.white),
                 ),
         ),

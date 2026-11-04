@@ -235,8 +235,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
       }
       final message = result.failure == LyricsFetchFailure.network
           ? (result.message ??
-                "Error técnico al descargar letras. Verificá tu conexión e intentá de nuevo.")
-          : "No se encontró letra para ${song.title}";
+                "Technical error downloading lyrics. Check your connection and try again.")
+          : "No lyrics found for ${song.title}";
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(message)),
       );
@@ -359,7 +359,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
     }
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text("Descarga completa.")));
+    ).showSnackBar(const SnackBar(content: Text("Download complete.")));
   }
 
   @override
@@ -372,7 +372,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
           backgroundColor: Colors.transparent,
           elevation: 0,
           title: Text(
-            "Biblioteca",
+            "Library",
             style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
@@ -431,7 +431,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
         onChanged: filterSongs,
         style: const TextStyle(color: Colors.white),
         decoration: InputDecoration(
-          hintText: "Buscar canción, artista o álbum...",
+          hintText: "Search song, artist or album...",
           hintStyle: const TextStyle(color: Colors.white54),
           filled: true,
           fillColor: Colors.white12,
@@ -467,7 +467,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
               color: Colors.white12,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Text("Todas", style: TextStyle(color: Colors.white)),
+            child: const Text("All", style: TextStyle(color: Colors.white)),
           ),
         ),
         PopupMenuItem<LyricFilter>(
@@ -479,7 +479,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
               borderRadius: BorderRadius.circular(8),
             ),
             child: const Text(
-              "TTML listo",
+              "TTML ready",
               style: TextStyle(color: Colors.white),
             ),
           ),
@@ -493,7 +493,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
               borderRadius: BorderRadius.circular(8),
             ),
             child: const Text(
-              "Solo LRC",
+              "LRC only",
               style: TextStyle(color: Colors.white),
             ),
           ),
@@ -507,7 +507,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
               borderRadius: BorderRadius.circular(8),
             ),
             child: const Text(
-              "Sin letras",
+              "No lyrics",
               style: TextStyle(color: Colors.white),
             ),
           ),
@@ -551,7 +551,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
       child: filteredSongs.isEmpty
           ? const Center(
               child: Text(
-                "No se encontraron canciones.",
+                "No songs found.",
                 style: TextStyle(color: Colors.white70),
               ),
             )
@@ -714,17 +714,17 @@ class _LibraryScreenState extends State<LibraryScreen> {
     switch (state) {
       case SongLyricState.ttmlReady:
         return _stateChip(
-          label: 'TTML listo',
+          label: 'TTML ready',
           color: Colors.greenAccent,
         );
       case SongLyricState.lrcOnly:
         return _stateChip(
-          label: 'Solo LRC',
+          label: 'LRC only',
           color: Colors.amberAccent,
         );
       case SongLyricState.noLyrics:
         return _stateChip(
-          label: 'Sin letras',
+          label: 'No lyrics',
           color: Colors.white60,
         );
     }

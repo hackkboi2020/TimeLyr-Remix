@@ -13,7 +13,7 @@ class AboutScreen extends StatelessWidget {
         appBar: AppBar(
           automaticallyImplyLeading: false,
           title: const Text(
-            'Acerca de',
+            'About',
             style: TextStyle(
               color: Colors.white,
               fontSize: 28,
@@ -32,7 +32,7 @@ class AboutScreen extends StatelessWidget {
                 Padding(
                   padding: EdgeInsets.all(16.0),
                   child: Text(
-                    'TimeLyr\nTu música, tus letras.',
+                    'TimeLyr\nYour music, your lyrics.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white,
@@ -46,7 +46,7 @@ class AboutScreen extends StatelessWidget {
                 Padding(
                   padding: EdgeInsets.symmetric(horizontal: 16.0),
                   child: Text(
-                    'TimeLyr es una aplicación diseñada para obtener letras de canciones almacenadas en tu dispositivo. La app lee los metadatos de tus archivos, busca letras sincronizadas (LRC) o de texto plano en LRCLib y las guarda localmente para que puedas consultarlas sin conexión.',
+                    'TimeLyr is an app designed to get lyrics for the songs stored on your device. The app reads the metadata of your files, searches LRCLib for synced (LRC) or plain-text lyrics, and saves them locally so you can view them offline.',
                     textAlign: TextAlign.left,
                     style: TextStyle(color: Colors.white70, fontSize: 14),
                   ),
@@ -54,11 +54,11 @@ class AboutScreen extends StatelessWidget {
                 Padding(
                   padding: EdgeInsets.all(16.0),
                   child: Text(
-                    'Características principales:\n\n'
-                    '• Búsqueda automática de letras sincronizadas y de texto plano.\n'
-                    '• Almacenamiento local para acceso sin conexión.\n'
-                    '• Interfaz sencilla y fácil de usar.\n\n'
-                    'TimeLyr es ideal para amantes de la música que desean tener sus letras favoritas siempre a mano, ya sea para cantar junto a sus canciones o simplemente para disfrutar de la poesía detrás de la música.',
+                    'Main features:\n\n'
+                    '• Automatic search for synced and plain-text lyrics.\n'
+                    '• Local storage for offline access.\n'
+                    '• Simple, easy-to-use interface.\n\n'
+                    'TimeLyr is ideal for music lovers who want their favorite lyrics always at hand, whether to sing along to their songs or simply to enjoy the poetry behind the music.',
                     textAlign: TextAlign.left,
                     style: TextStyle(color: Colors.white70, fontSize: 14),
                   ),
@@ -66,7 +66,7 @@ class AboutScreen extends StatelessWidget {
                 Padding(
                   padding: EdgeInsets.all(16.0),
                   child: Text(
-                    '¡Gracias por usar TimeLyr!',
+                    'Thanks for using TimeLyr!',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white,
@@ -83,7 +83,7 @@ class AboutScreen extends StatelessWidget {
                 Padding(
                   padding: EdgeInsets.all(10.0),
                   child: Text(
-                    'Versión de la aplicación: 1.0.1',
+                    'App version: 1.0.1',
                     textAlign: TextAlign.center,
                     style: TextStyle(color: Colors.white54, fontSize: 12),
                   ),
@@ -93,13 +93,13 @@ class AboutScreen extends StatelessWidget {
                   child: Column(
                     children: [
                       Text(
-                        'Desarrollado por Cristian Villalobos Cuadrado.',
+                        'Developed by Cristian Villalobos Cuadrado.',
                         textAlign: TextAlign.center,
                         style: TextStyle(color: Colors.white54, fontSize: 12),
                       ),
                       RichText(
                         text: TextSpan(
-                          text: 'GitHub de la app',
+                          text: 'App GitHub',
                           style: TextStyle(
                             color: Colors.blueAccent,
                             decoration: TextDecoration.underline,
@@ -122,7 +122,7 @@ class AboutScreen extends StatelessWidget {
                   child: Column(
                     children: [
                       Text(
-                        'Letras proporcionadas por la biblioteca LRCLib.',
+                        'Lyrics provided by the LRCLib library.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: Colors.white54,
@@ -132,7 +132,7 @@ class AboutScreen extends StatelessWidget {
                       ),
                       RichText(
                         text: TextSpan(
-                          text: 'Visita LRCLib en GitHub',
+                          text: 'Visit LRCLib on GitHub',
                           style: TextStyle(
                             color: Colors.blueAccent,
                             decoration: TextDecoration.underline,
@@ -153,7 +153,7 @@ class AboutScreen extends StatelessWidget {
                 Padding(
                   padding: EdgeInsets.all(10.0),
                   child: Text(
-                    '© 2025 TimeLyr. Licencia MIT.',
+                    '© 2025 TimeLyr. MIT License.',
                     textAlign: TextAlign.center,
                     style: TextStyle(color: Colors.white54, fontSize: 12),
                   ),

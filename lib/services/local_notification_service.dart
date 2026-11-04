@@ -39,8 +39,8 @@ class LocalNotificationService {
 
     await _flutterLocalNotificationsPlugin.show(
       id,
-      progress < max ? 'Descargando...' : 'Descarga Completada',
-      max > 0 ? 'Progreso: $progress / $max' : null,
+      progress < max ? 'Downloading...' : 'Download Complete',
+      max > 0 ? 'Progress: $progress / $max' : null,
       notificationDetails,
     );
   }

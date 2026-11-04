@@ -80,7 +80,7 @@ class LyricPreviewScreen extends StatelessWidget {
                         ),
                       )
                     : Text(
-                        "Esta canción es instrumental y no contiene letra.",
+                        "This song is instrumental and has no lyrics.",
                         style: TextStyle(
                           color: Colors.white70,
                           fontStyle: FontStyle.italic,
@@ -115,11 +115,11 @@ class LyricPreviewScreen extends StatelessWidget {
                             return AlertDialog(
                               backgroundColor: const Color(0xFF1B2838),
                               title: const Text(
-                                "Reemplazar letra existente",
+                                "Replace existing lyrics",
                                 style: TextStyle(color: Colors.white),
                               ),
                               content: const Text(
-                                "Esta canción ya tiene letra. ¿Deseas reemplazarla con la nueva letra?",
+                                "This song already has lyrics. Do you want to replace them with the new lyrics?",
                                 style: TextStyle(color: Colors.white70),
                               ),
                               actions: [
@@ -127,7 +127,7 @@ class LyricPreviewScreen extends StatelessWidget {
                                   onPressed: () =>
                                       Navigator.of(dialogContext).pop(false),
                                   child: const Text(
-                                    "Cancelar",
+                                    "Cancel",
                                     style: TextStyle(color: Colors.white70),
                                   ),
                                 ),
@@ -138,7 +138,7 @@ class LyricPreviewScreen extends StatelessWidget {
                                     backgroundColor: Colors.blueAccent,
                                   ),
                                   child: const Text(
-                                    "Reemplazar",
+                                    "Replace",
                                     style: TextStyle(color: Colors.white),
                                   ),
                                 ),
@@ -174,7 +174,7 @@ class LyricPreviewScreen extends StatelessWidget {
                           // ignore: use_build_context_synchronously
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text("Letra guardada como archivo .lrc"),
+                              content: Text("Lyrics saved as .lrc file"),
                             ),
                           );
 
@@ -187,7 +187,7 @@ class LyricPreviewScreen extends StatelessWidget {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(
-                                "Error al guardar la letra: ${e.toString()}",
+                                "Error saving lyrics: ${e.toString()}",
                               ),
                               backgroundColor: Colors.red,
                             ),
@@ -197,7 +197,7 @@ class LyricPreviewScreen extends StatelessWidget {
                     },
                     icon: const Icon(Icons.check, color: Colors.white),
                     label: const Text(
-                      "Usar esta letra",
+                      "Use these lyrics",
                       style: TextStyle(color: Colors.white),
                     ),
                     style: ElevatedButton.styleFrom(
@@ -212,12 +212,12 @@ class LyricPreviewScreen extends StatelessWidget {
                       // ignore: use_build_context_synchronously
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                          content: Text("Letra guardada como archivo .lrc"),
+                          content: Text("Lyrics saved as .lrc file"),
                         ),
                       );
                     },
                     icon: const Icon(Icons.save),
-                    label: const Text("Guardar"),
+                    label: const Text("Save"),
                   ),*/
                 ],
               ),

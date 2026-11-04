@@ -56,7 +56,7 @@ class _SearchScreenState extends State<SearchScreen> {
     if (title.isEmpty && artist.isEmpty && album.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Por favor ingrese al menos un campo para buscar."),
+          content: Text("Please fill in at least one field to search."),
         ),
       );
       return;
@@ -80,7 +80,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
       setState(() {
         if (lrcList.isEmpty) {
-          _error = "No se encontraron letras para los criterios dados.";
+          _error = "No lyrics found for the given criteria.";
         } else {
           results = lrcList;
         }
@@ -92,7 +92,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
       setState(() {
         _error =
-            "Ocurrió un error durante la búsqueda. Verificá tu conexión e intentá de nuevo.";
+            "An error occurred during the search. Check your connection and try again.";
       });
     } finally {
       if (mounted) {
@@ -121,7 +121,7 @@ class _SearchScreenState extends State<SearchScreen> {
           backgroundColor: Colors.transparent,
           elevation: 0,
           title: const Text(
-            "Busqueda Manual",
+            "Manual Search",
             style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
@@ -139,7 +139,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 controller: titleController,
                 style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
-                  hintText: "Titulo",
+                  hintText: "Title",
                   hintStyle: const TextStyle(color: Colors.white54),
                   filled: true,
                   fillColor: Colors.white12,
@@ -158,7 +158,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 controller: artistController,
                 style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
-                  hintText: "Artista",
+                  hintText: "Artist",
                   hintStyle: const TextStyle(color: Colors.white54),
                   filled: true,
                   fillColor: Colors.white12,
@@ -215,7 +215,7 @@ class _SearchScreenState extends State<SearchScreen> {
                         ),
                       )
                     : Text(
-                        "Buscar",
+                        "Search",
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
@@ -243,11 +243,11 @@ class _SearchScreenState extends State<SearchScreen> {
                     ),
                     child: ListTile(
                       title: Text(
-                        item.title.isNotEmpty ? item.title : "Sin título",
+                        item.title.isNotEmpty ? item.title : "Untitled",
                         style: const TextStyle(color: Colors.white),
                       ),
                       subtitle: Text(
-                        "${item.artist} • ${item.album.isNotEmpty ? item.album : 'Sin álbum'} • ${formatDuration(item.durationSeconds)}",
+                        "${item.artist} • ${item.album.isNotEmpty ? item.album : 'No album'} • ${formatDuration(item.durationSeconds)}",
 
                         style: const TextStyle(color: Colors.white70),
                       ),

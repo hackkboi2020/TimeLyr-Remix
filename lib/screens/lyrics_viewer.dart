@@ -64,12 +64,12 @@ class _LyricsViewerState extends State<LyricsViewer> {
       await loadLyrics();
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text("Letra descargada.")));
+      ).showSnackBar(SnackBar(content: Text("Lyrics downloaded.")));
     } else {
       setState(() => noLyricsFound = true);
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text("No se encontró letra.")));
+      ).showSnackBar(SnackBar(content: Text("No lyrics found.")));
     }
 
     setState(() => downloading = false);
@@ -252,7 +252,7 @@ class _LyricsViewerState extends State<LyricsViewer> {
                         },
                         icon: const Icon(Icons.search, color: Colors.white),
                         label: const Text(
-                          "Buscar letra manualmente",
+                          "Search lyrics manually",
                           style: TextStyle(color: Colors.white),
                         ),
                         style: ElevatedButton.styleFrom(
@@ -271,7 +271,7 @@ class _LyricsViewerState extends State<LyricsViewer> {
                       : lyrics == null
                       ? const Center(
                           child: Text(
-                            "No hay letra disponible",
+                            "No lyrics available",
                             style: TextStyle(
                               color: Colors.white70,
                               fontSize: 18,

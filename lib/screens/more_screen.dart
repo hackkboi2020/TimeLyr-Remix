@@ -70,10 +70,10 @@ class _MoreScreenState extends State<MoreScreen> {
               backgroundColor: const Color(0xFF0D1B2A),
               title: Text(
                 total == 0 && fixed == 0 && currentSong.isEmpty
-                    ? 'Buscando LRC dañados...'
+                    ? 'Searching for damaged LRC files...'
                     : total == 0 && fixed == 0
-                    ? 'Reparando...'
-                    : 'Reparación completa',
+                    ? 'Repairing...'
+                    : 'Repair complete',
                 style: const TextStyle(color: Colors.white),
               ),
               content: total == 0 && fixed == 0
@@ -99,15 +99,15 @@ class _MoreScreenState extends State<MoreScreen> {
                     )
                   : Text(
                       total > 0
-                          ? 'Se repararon $fixed de $total LRC dañados.'
-                          : 'No se encontraron LRC dañados.',
+                          ? 'Repaired $fixed of $total damaged LRC files.'
+                          : 'No damaged LRC files found.',
                       style: const TextStyle(color: Colors.white70),
                     ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
                   child: const Text(
-                    'Cerrar',
+                    'Close',
                     style: TextStyle(color: Colors.white),
                   ),
                 ),
@@ -127,7 +127,7 @@ class _MoreScreenState extends State<MoreScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         title: const Text(
-          'Más',
+          'More',
           style: TextStyle(
             color: Colors.white,
             fontSize: 28,
@@ -153,7 +153,7 @@ class _MoreScreenState extends State<MoreScreen> {
             ),
             subtitle: Center(
               child: Text(
-                'Encuentra letras sincronizadas para toda tu música',
+                'Find synced lyrics for all your music',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Colors.white70,
@@ -169,7 +169,7 @@ class _MoreScreenState extends State<MoreScreen> {
                 ? Icon(Icons.notifications_on, color: Colors.white)
                 : Icon(Icons.notifications_off, color: Colors.white),
             title: Text(
-              'Notificaciones',
+              'Notifications',
               style: TextStyle(color: Colors.white),
             ),
             trailing: Switch(
@@ -189,7 +189,7 @@ class _MoreScreenState extends State<MoreScreen> {
           ListTile(
             leading: Icon(Icons.sd_card, color: Colors.white),
             title: Text(
-              'Almacenamiento',
+              'Storage',
               style: TextStyle(color: Colors.white),
             ),
             onTap: () {
@@ -206,7 +206,7 @@ class _MoreScreenState extends State<MoreScreen> {
               color: Colors.white,
             ),
             title: Text(
-              'Escaneo al abrir la app',
+              'Scan on app launch',
               style: TextStyle(color: Colors.white),
             ),
             trailing: Switch(
@@ -226,7 +226,7 @@ class _MoreScreenState extends State<MoreScreen> {
           ListTile(
             leading: Icon(Icons.search, color: Colors.white),
             title: Text(
-              'Escanear música',
+              'Scan music',
               style: TextStyle(color: Colors.white),
             ),
             onTap: () {
@@ -236,18 +236,18 @@ class _MoreScreenState extends State<MoreScreen> {
           ListTile(
             leading: Icon(Icons.healing, color: Colors.orangeAccent),
             title: Text(
-              'Reparar LRC dañados',
+              'Repair damaged LRC files',
               style: TextStyle(color: Colors.white),
             ),
             subtitle: const Text(
-              'Re-descarga LRC con timestamps incorrectos',
+              'Re-downloads LRC files with incorrect timestamps',
               style: TextStyle(color: Colors.white60, fontSize: 11),
             ),
             onTap: () => _fixBadLrcs(context),
           ),
           ListTile(
             leading: Icon(Icons.info, color: Colors.white),
-            title: Text('Acerca de', style: TextStyle(color: Colors.white)),
+            title: Text('About', style: TextStyle(color: Colors.white)),
             onTap: () {
               Navigator.push(
                 context,

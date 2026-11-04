@@ -113,7 +113,7 @@ class _MainScreenState extends State<MainScreen> {
                 CircularProgressIndicator(color: Colors.white),
                 SizedBox(height: 20),
                 Text(
-                  "Cargando tu biblioteca...",
+                  "Loading your library...",
                   style: TextStyle(fontSize: 18, color: Colors.white70),
                 ),
               ],
@@ -140,7 +140,7 @@ class _MainScreenState extends State<MainScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      "Escaneando tu biblioteca...",
+                      "Scanning your library...",
                       style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w600,
@@ -148,7 +148,7 @@ class _MainScreenState extends State<MainScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      "$_scanScanned archivos revisados • $_scanFound canciones encontradas",
+                      "$_scanScanned files checked • $_scanFound songs found",
                       style: const TextStyle(
                         color: Colors.white70,
                         fontSize: 12,
@@ -190,12 +190,12 @@ class _MainScreenState extends State<MainScreen> {
               NavigationDestination(
                 icon: Icon(Icons.library_music_outlined, color: Colors.white70),
                 selectedIcon: Icon(Icons.library_music, color: Colors.white),
-                label: "Biblioteca",
+                label: "Library",
               ),
               NavigationDestination(
                 icon: Icon(Icons.more_horiz, color: Colors.white70),
                 selectedIcon: Icon(Icons.more, color: Colors.white),
-                label: "Más",
+                label: "More",
               ),
             ],
           ),

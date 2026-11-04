@@ -98,7 +98,7 @@ class LyricsService {
       return LyricsFetchResult.network(e.message);
     } catch (_) {
       return LyricsFetchResult.network(
-        "Error técnico al consultar letras. Probá de nuevo.",
+        "Technical error fetching lyrics. Please try again.",
       );
     }
   }
@@ -133,7 +133,7 @@ class LyricsService {
       if (fetchResult.failure == LyricsFetchFailure.network) {
         return LyricsSaveResult.network(
           fetchResult.message ??
-              "Error técnico al consultar letras. Probá de nuevo.",
+              "Technical error fetching lyrics. Please try again.",
         );
       }
       return LyricsSaveResult.notFound();

@@ -28,23 +28,23 @@ class _ToggleNotificationsState extends State<ToggleNotifications> {
       backgroundColor: Color(0xFF0D1B2A),
       title: toggle != true
           ? Text(
-              'Habilitar notificaciones',
+              'Enable notifications',
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.white),
             )
           : Text(
-              'Deshabilitar notificaciones',
+              'Disable notifications',
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.white),
             ),
       content: toggle != true
           ? Text(
-              '¿Desea habilitar las notificaciones para letras de canciones y actualizaciones?',
+              'Do you want to enable notifications for song lyrics and updates?',
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.white),
             )
           : Text(
-              '¿Desea deshabilitar las notificaciones para letras de canciones y actualizaciones?',
+              'Do you want to disable notifications for song lyrics and updates?',
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.white),
             ),
@@ -57,7 +57,7 @@ class _ToggleNotificationsState extends State<ToggleNotifications> {
             await NotificationSettings.setEnabled(toggle);
             Navigator.of(context).pop(toggle);
           },
-          child: Text('Sí', style: TextStyle(color: Colors.white)),
+          child: Text('Yes', style: TextStyle(color: Colors.white)),
         ),
         TextButton(
           onPressed: () {
