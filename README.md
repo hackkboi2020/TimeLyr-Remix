@@ -1,48 +1,28 @@
+# 🎵 TimeLyr — Advanced lyrics finder for your local music
 
----
+TimeLyr is a mobile application developed in Flutter that allows you to retrieve, manage, and display lyrics of songs stored on your device. It scans your local files, extracts their metadata, and downloads synchronized lyrics (LRC) or plain text from LRCLib, always maintaining user privacy.
 
-# 🎵 **TimeLyr — Buscador avanzado de letras para tu música local**
+✨ Main features
 
-**TimeLyr** es una aplicación móvil desarrollada en **Flutter** que permite obtener, gestionar y visualizar letras de canciones almacenadas en tu dispositivo.
-Analiza tus archivos locales, extrae sus metadatos y descarga letras sincronizadas (LRC) o en texto plano desde **LRCLib**, manteniendo siempre la privacidad del usuario.
+🔍 Automatic metadata detection Extracts title, artist, album, and duration without requiring an internet connection.
 
----
+🎼 Full compatibility with LRC files Custom parser, timestamp support, and smooth rendering.
 
-## ✨ **Características principales**
+📡 Lyrics retrieval from LRCLib API Optimized requests based on your local metadata.
 
-* 🔍 **Detección automática de metadatos**
-  Extrae título, artista, álbum y duración sin necesidad de internet.
+🚫 Instrumental song detection If no lyrics are found, TimeLyr automatically marks it as such.
 
-* 🎼 **Compatibilidad completa con archivos LRC**
-  Parser propio, soporte para timestamps y renderizado fluido.
+🖼️ Smart caching of artwork and data Improved speed for large lists.
 
-* 📡 **Obtención de letras desde LRCLib API**
-  Peticiones optimizadas según tus metadatos locales.
-
-* 🚫 **Detección de canciones instrumentales**
-  Si no se encuentra letra, TimeLyr lo marca automáticamente.
-
-* 🖼️ **Caché inteligente de carátulas y datos**
-  Velocidad mejorada para listas grandes.
-
----
-
-## 🚀 **Tecnologías utilizadas**
-
-| Componente  | Tecnología                       |
-| ----------- | -------------------------------- |
-| Framework   | Flutter (Dart 3)                 |
-| API         | LRCLib                           |
-| Metadatos   | metadata_god + servicios propios |
-| Parsing LRC | Implementación personalizada     |
-| UI          | Material 3 con temas propios     |
-| Caché       | almacenamiento local optimizado  |
-
----
-
-## 📦 **Estructura del proyecto**
-
-```
+🚀 Technologies used
+Component	Technology
+Framework	Flutter (Dart 3)
+API	LRCLib
+Metadata	metadata_god + custom services
+LRC Parsing	Custom implementation
+UI	Material 3 with custom themes
+Caching	optimized local storage
+📦 Project structure
 lib/
 ├── main.dart
 ├── models
@@ -81,114 +61,17 @@ lib/
     ├── select_directory.dart
     ├── song_tile.dart
     └── toggleNotifications.dart
-```
 
----
+🧪 Project status
 
-## 🧪 **Estado del proyecto**
+TimeLyr currently supports:
 
-TimeLyr actualmente soporta:
+✔ folder scanning ✔ local metadata reading ✔ automatic lyrics search ✔ LRC downloading and storage ✔ advanced viewer ✔ instrumental song detection ✔ artwork and song caching ✔ manual search ✔ notification settings
 
-✔ escaneo de carpetas
-✔ lectura de metadatos locales
-✔ búsqueda automática de letras
-✔ descarga y almacenamiento de LRC
-✔ visualizador avanzado
-✔ detección de canciones instrumentales
-✔ caché de carátulas y canciones
-✔ búsqueda manual
-✔ configuración de notificaciones
+Suggested future work:
 
-Trabajos futuros sugeridos:
-
-* 🎨 más temas personalizables
-* 🧠 mejoras en el algoritmo de coincidencia con la API
-* 🔔 mejor integración con notificaciones de sistema
-* 🔍 buscador por filtros (álbum, género, año…)
-* 🗃️ exportación/importación de letras y configuraciones
-
----
-
-## 📥 **Instalación (Android)**
-
-1. Descarga el APK desde **Releases**.
-2. Instálalo en tu dispositivo Android.
-3. Selecciona la carpeta donde guardas tu música.
-4. TimeLyr analizará tus archivos y buscará letras automáticamente.
-
----
-
-## 🧰 **Compilar desde código fuente**
-
-Requisitos:
-
-* Flutter SDK 3.19+
-* Android SDK
-* Dart 3.9+
-
-```bash
-git clone https://github.com/cvc953/timelyr.git
-cd timelyr
-flutter pub get
-flutter build apk --release
-```
-
----
-
-## 🌐 **Cómo funciona TimeLyr internamente**
-
-1. El usuario selecciona su carpeta de música.
-2. TimeLyr escanea los archivos usando `permissions.dart` y `file_service.dart`.
-3. Extrae metadatos con una implementación ligera.
-4. Construye una petición óptima a LRCLib usando:
-
-   * título
-   * artista
-   * álbum
-   * duración
-5. Obtiene letra sincronizada o no sincronizada.
-6. Guarda la letra localmente (`download_manager.dart`).
-7. Si no hay letra → marca la canción como instrumental.
-
----
-
-## 🤝 **Contribuciones**
-
-Las contribuciones son bienvenidas.
-Puedes colaborar mediante:
-
-* Pull requests
-* Reporte de errores
-* Sugerencias de funciones
-* Correcciones de documentación
-
----
-
-## 📄 Licencia
-
-Este proyecto está licenciado bajo la **MIT License**.  
-Puedes ver el archivo completo en [`LICENCIA`](LICENSE).
-
-## 📸 **Capturas**
-
-## 📚 Biblioteca
-
-![Biblioteca](docs/screenshots/Biblioteca.jpeg)
-
-## 📝 Vista previa
-
-![Letras](docs/screenshots/VisualizacionDeLetra.jpeg)
-
-## 🔍 Busqueda Manual
-
-![Busqueda manual](docs/screenshots/BusquedaManual.jpeg)
-
-## 📥 Descarga masiva
-
-![Descargar todas](docs/screenshots/DescargarTodas.jpeg)
-
-## ⚙️ Más / Opciones  
-
-![Más opciones](docs/screenshots/Mas.jpeg)
-
----
+🎨 more customizable themes
+🧠 improvements to the API matching algorithm
+🔔 better integration with system notifications
+🔍 filter-based search (album, genre, year…)
+🗃️ lyrics and settings export/import
