@@ -1,5 +1,3 @@
----
-
 # 🎵 **TimeLyr — Advanced lyrics finder for your local music**
 
 **TimeLyr** is a mobile app built with **Flutter** that lets you fetch, manage and view lyrics for the songs stored on your device.
