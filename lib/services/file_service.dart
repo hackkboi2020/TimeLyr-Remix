@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'dart:async';
 import 'package:path/path.dart' as p;
 import 'package:timelyr/services/kpoe_remote_service.dart';
+import 'package:timelyr/utils/ttml_miss_cache.dart';
 
 class FileService {
   static List<Song> librarySongs = [];
@@ -67,9 +68,31 @@ class FileService {
         continue;
       }
 
+      final String itemGenre = (item['genre'] as String?)?.trim() ?? '';
+      final int itemYear = (item['year'] as num?)?.toInt() ?? 0;
+
       // Si ya existe en caché, reutilizar la entrada
       if (cachedByPath.containsKey(normalizedPath)) {
-        songs.add(cachedByPath[normalizedPath]!);
+        final cachedSong = cachedByPath[normalizedPath]!;
+        // Entries cached by older versions have no genre/year: fill them in.
+        if ((cachedSong.genre.isEmpty && itemGenre.isNotEmpty) ||
+            (cachedSong.year == 0 && itemYear > 0)) {
+          songs.add(
+            Song(
+              path: cachedSong.path,
+              title: cachedSong.title,
+              artist: cachedSong.artist,
+              album: cachedSong.album,
+              durationSeconds: cachedSong.durationSeconds,
+              genre: cachedSong.genre.isEmpty ? itemGenre : cachedSong.genre,
+              year: cachedSong.year == 0 ? itemYear : cachedSong.year,
+              modifiedMs: cachedSong.modifiedMs,
+              size: cachedSong.size,
+            ),
+          );
+        } else {
+          songs.add(cachedSong);
+        }
         onScan(path, i + 1, songs.length);
         continue;
       }
@@ -80,6 +103,8 @@ class FileService {
         artist: item['artist'] as String? ?? '',
         album: item['album'] as String? ?? '',
         durationSeconds: ((item['durationMs'] as num?)?.toInt() ?? 0) ~/ 1000,
+        genre: itemGenre,
+        year: itemYear,
         modifiedMs: DateTime.now().millisecondsSinceEpoch,
         size: 0,
       );
@@ -131,8 +156,9 @@ class FileService {
   static Future<bool> _saveTTMLContent(
     String songPath,
     Song song,
-    String ttmlContent,
-  ) async {
+    String ttmlContent, {
+    bool overwrite = false,
+  }) async {
     try {
       final file = File(songPath);
       final dir = file.parent.path;
@@ -142,7 +168,7 @@ class FileService {
       // Si ya existe un .ttml para esta canción, comprobar su integridad.
       // Si parece válido, no reintentar; si parece dañado, proceder a descargar.
       final existing = File(ttmlPath);
-      if (existing.existsSync()) {
+      if (!overwrite && existing.existsSync()) {
         try {
           final contents = await existing.readAsString();
           // Considerar válido si contiene etiqueta <tt y tiene tamaño razonable
@@ -176,19 +202,53 @@ class FileService {
     }
   }
 
-  static Future<bool> saveTTMLForSong(String songPath, Song song) async {
-    final ttml = await KpoeRemoteService.fetchFromKpoe(
+  static bool _hasValidTtml(String songPath) {
+    try {
+      final file = File(songPath);
+      final name = p.basenameWithoutExtension(file.path);
+      final ttml = File("${file.parent.path}/$name.ttml");
+      if (!ttml.existsSync()) return false;
+      final contents = ttml.readAsStringSync();
+      return (contents.contains('<tt') || contents.contains('<?xml')) &&
+          contents.trim().length > 100;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Fetches and saves the TTML for a song (automatic mode). Skips the network
+  /// when a valid TTML already exists or when a recent lookup found nothing;
+  /// pass [force] to ignore both.
+  static Future<bool> saveTTMLForSong(
+    String songPath,
+    Song song, {
+    bool force = false,
+  }) async {
+    if (!force) {
+      if (_hasValidTtml(songPath)) return true;
+      if (await TtmlMissCache.isMiss(songPath)) return false;
+    }
+
+    final stats = KpoeFetchStats();
+    final ttml = await KpoeRemoteService.fetchWithFallbacks(
       song.title,
       song.artist,
       album: song.album,
       duration: song.durationSeconds <= 0
           ? ''
           : song.durationSeconds.toString(),
+      stats: stats,
     );
 
     if (ttml == null || ttml.trim().isEmpty) {
+      // Only remember genuine "not found" answers, never network failures.
+      if (stats.reachedServer) {
+        await TtmlMissCache.recordMiss(songPath);
+      }
       return false;
     }
+
+    await TtmlMissCache.clear(songPath);
 
     final converted = KpoeRemoteService.convertKpoeJsonToTtml(
       ttml,
@@ -197,6 +257,62 @@ class FileService {
     );
 
     return _saveTTMLContent(songPath, song, converted);
+  }
+
+  /// Manual TTML lookup with the tags the user typed. Returns the TTML text,
+  /// or null if nothing was found. Throws if no server could be reached.
+  static Future<String?> searchTtml({
+    required String title,
+    required String artist,
+    String album = '',
+    int durationSeconds = 0,
+  }) async {
+    final stats = KpoeFetchStats();
+    final body = await KpoeRemoteService.fetchWithFallbacks(
+      title,
+      artist,
+      album: album,
+      duration: durationSeconds <= 0 ? '' : durationSeconds.toString(),
+      aggressive: true,
+      stats: stats,
+    );
+
+    if (body == null || body.trim().isEmpty) {
+      if (!stats.reachedServer) {
+        throw const SocketException('TTML servers unreachable');
+      }
+      return null;
+    }
+
+    final converted = KpoeRemoteService.convertKpoeJsonToTtml(
+      body,
+      title: title,
+      artist: artist,
+    );
+    return converted.trim().isEmpty ? null : converted;
+  }
+
+  /// Saves a TTML chosen by the user. Returns false when the TTML had no
+  /// word-level timing and was saved as an LRC instead.
+  static Future<bool> saveTtmlContent(
+    String songPath,
+    Song song,
+    String ttml, {
+    bool overwrite = false,
+  }) {
+    return _saveTTMLContent(songPath, song, ttml, overwrite: overwrite);
+  }
+
+  /// Creates an LRC from a TTML only when the song has no LRC yet.
+  static Future<void> saveLrcFromTtmlIfMissing(
+    String songPath,
+    Song song,
+    String ttml,
+  ) async {
+    final file = File(songPath);
+    final name = p.basenameWithoutExtension(file.path);
+    if (File("${file.parent.path}/$name.lrc").existsSync()) return;
+    await _saveTtmlAsLrcFallback(songPath, song, ttml);
   }
 
   static Future<Uint8List?> loadArtwork(String path) async {

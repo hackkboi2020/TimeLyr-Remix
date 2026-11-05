@@ -3,6 +3,7 @@ package com.cvc953.lyrio
 import android.content.Context
 import android.database.Cursor
 import android.media.MediaMetadataRetriever
+import android.os.Build
 import android.net.Uri
 import android.provider.MediaStore
 import android.util.Log
@@ -120,7 +121,13 @@ class MetadataReaderPlugin :
                 MediaStore.Audio.Media.ALBUM,
                 MediaStore.Audio.Media.DURATION,
                 MediaStore.Audio.Media.DATA,
-            )
+                MediaStore.Audio.Media.YEAR,
+            ).let { base ->
+                // The GENRE column exists on API 30+; older versions use the Genres table below.
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) base + "genre" else base
+            }
+        val genreById: Map<Long, String> =
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) loadGenreMap() else emptyMap()
 
         val hasRootFilter = !rootPath.isNullOrBlank()
         val selection =
@@ -150,6 +157,8 @@ class MetadataReaderPlugin :
                 val albumIndex = cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM)
                 val durationIndex = cursor.getColumnIndex(MediaStore.Audio.Media.DURATION)
                 val dataIndex = cursor.getColumnIndex(MediaStore.Audio.Media.DATA)
+                val yearIndex = cursor.getColumnIndex(MediaStore.Audio.Media.YEAR)
+                val genreIndex = cursor.getColumnIndex("genre")
 
                 while (cursor.moveToNext()) {
                     val item = mutableMapOf<String, Any>()
@@ -160,11 +169,55 @@ class MetadataReaderPlugin :
                     if (albumIndex >= 0) cursor.getString(albumIndex)?.let { item["album"] = it }
                     if (durationIndex >= 0) item["durationMs"] = cursor.getLong(durationIndex)
                     if (dataIndex >= 0) cursor.getString(dataIndex)?.let { item["path"] = it }
+                    if (yearIndex >= 0) item["year"] = cursor.getInt(yearIndex)
+                    if (genreIndex >= 0) {
+                        cursor.getString(genreIndex)?.let { item["genre"] = it }
+                    } else if (idIndex >= 0) {
+                        genreById[cursor.getLong(idIndex)]?.let { item["genre"] = it }
+                    }
 
                     musicList.add(item)
                 }
             }
 
         return musicList
+    }
+
+    /** API < 30: builds a map of audio id -> genre name from the MediaStore Genres tables. */
+    private fun loadGenreMap(): Map<Long, String> {
+        val map = mutableMapOf<Long, String>()
+        try {
+            context.contentResolver
+                .query(
+                    MediaStore.Audio.Genres.EXTERNAL_CONTENT_URI,
+                    arrayOf(MediaStore.Audio.Genres._ID, MediaStore.Audio.Genres.NAME),
+                    null,
+                    null,
+                    null,
+                )?.use { genres ->
+                    val gIdIdx = genres.getColumnIndex(MediaStore.Audio.Genres._ID)
+                    val gNameIdx = genres.getColumnIndex(MediaStore.Audio.Genres.NAME)
+                    while (genres.moveToNext()) {
+                        val genreId = genres.getLong(gIdIdx)
+                        val name = genres.getString(gNameIdx) ?: continue
+                        context.contentResolver
+                            .query(
+                                MediaStore.Audio.Genres.Members.getContentUri("external", genreId),
+                                arrayOf(MediaStore.Audio.Media._ID),
+                                null,
+                                null,
+                                null,
+                            )?.use { members ->
+                                val mIdIdx = members.getColumnIndex(MediaStore.Audio.Media._ID)
+                                while (members.moveToNext()) {
+                                    map[members.getLong(mIdIdx)] = name
+                                }
+                            }
+                    }
+                }
+        } catch (e: Exception) {
+            Log.e("MetadataReader", "Error reading genres", e)
+        }
+        return map
     }
 }

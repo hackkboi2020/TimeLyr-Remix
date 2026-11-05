@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:timelyr/theme/app_theme.dart';
 
 class GradientBackground extends StatelessWidget {
   final Widget child;
@@ -8,9 +9,9 @@ class GradientBackground extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Color(0xFF0A2342), Color(0xFF1D3D63), Color(0xFF3A6EA5)],
+          colors: AppTheme.gradient,
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),

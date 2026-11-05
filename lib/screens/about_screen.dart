@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/gestures.dart';
+import 'package:timelyr/theme/app_theme.dart';
 
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
@@ -20,9 +21,9 @@ class AboutScreen extends StatelessWidget {
               fontWeight: FontWeight.bold,
             ),
           ),
-          backgroundColor: const Color(0xFF0D1B2A),
+          backgroundColor: AppTheme.background,
         ),
-        backgroundColor: const Color(0xFF0D1B2A),
+        backgroundColor: AppTheme.background,
         body: Center(
           child: SingleChildScrollView(
             //mainAxisAlignment: MainAxisAlignment.start,
@@ -101,7 +102,7 @@ class AboutScreen extends StatelessWidget {
                         text: TextSpan(
                           text: 'App GitHub',
                           style: TextStyle(
-                            color: Colors.blueAccent,
+                            color: AppTheme.accent,
                             decoration: TextDecoration.underline,
                             fontSize: 12,
                           ),
@@ -134,7 +135,7 @@ class AboutScreen extends StatelessWidget {
                         text: TextSpan(
                           text: 'Visit LRCLib on GitHub',
                           style: TextStyle(
-                            color: Colors.blueAccent,
+                            color: AppTheme.accent,
                             decoration: TextDecoration.underline,
                             fontSize: 12,
                           ),

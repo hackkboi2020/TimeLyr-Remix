@@ -6,6 +6,7 @@ import 'more_screen.dart';
 import '../utils/default_music_path.dart';
 import '../utils/app_storage.dart';
 import '../services/file_service.dart';
+import 'package:timelyr/theme/app_theme.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -103,9 +104,9 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const GradientBackground(
+      return GradientBackground(
         child: Scaffold(
-          backgroundColor: Color(0xFF0D1B2A),
+          backgroundColor: AppTheme.background,
           body: Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -125,7 +126,7 @@ class _MainScreenState extends State<MainScreen> {
 
     return GradientBackground(
       child: Scaffold(
-        backgroundColor: Color(0xFF0D1B2A),
+        backgroundColor: AppTheme.background,
         body: Column(
           children: [
             if (_isBackgroundScanning)
@@ -155,8 +156,8 @@ class _MainScreenState extends State<MainScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    const LinearProgressIndicator(
-                      color: Colors.blueAccent,
+                    LinearProgressIndicator(
+                      color: AppTheme.accent,
                       backgroundColor: Colors.white24,
                     ),
                   ],
@@ -167,8 +168,8 @@ class _MainScreenState extends State<MainScreen> {
         ),
         bottomNavigationBar: NavigationBarTheme(
           data: NavigationBarThemeData(
-            backgroundColor: const Color(0xFF0D1B2A),
-            indicatorColor: Colors.blueAccent.withValues(alpha: 0.25),
+            backgroundColor: AppTheme.background,
+            indicatorColor: AppTheme.accent.withValues(alpha: 0.25),
 
             labelTextStyle: WidgetStateProperty.resolveWith<TextStyle>((
               states,
@@ -180,8 +181,8 @@ class _MainScreenState extends State<MainScreen> {
             }),
           ),
           child: NavigationBar(
-            backgroundColor: const Color(0xFF0D1B2A),
-            indicatorColor: Colors.blueAccent.withValues(alpha: 0.25),
+            backgroundColor: AppTheme.background,
+            indicatorColor: AppTheme.accent.withValues(alpha: 0.25),
             selectedIndex: _currentIndex,
             onDestinationSelected: (i) {
               setState(() => _currentIndex = i);

@@ -12,6 +12,7 @@ import 'lyrics_viewer.dart';
 import 'dart:typed_data';
 import '../services/download_manager.dart';
 import 'package:path/path.dart' as p;
+import 'package:timelyr/theme/app_theme.dart';
 
 enum LyricFilter { all, noLyrics, lrcOnly, ttmlReady }
 
@@ -43,6 +44,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
   final dm = DownloadManager.instance;
   double ttmlProgress = 0.0;
   LyricFilter _lyricFilter = LyricFilter.all;
+  String? _albumFilter;
+  String? _artistFilter;
+  String? _genreFilter;
+  int? _yearFilter;
   String _searchQuery = '';
   Timer? _searchDebounce;
   int _lyricStatusRefreshRequestId = 0;
@@ -99,7 +104,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
     _searchBlobByPath.clear();
     for (final song in songs) {
       _searchBlobByPath[song.path] =
-          "${song.title} ${getPrimaryArtist(song.artist)} ${song.album}"
+          "${song.title} ${getPrimaryArtist(song.artist)} ${song.album} "
+                  "${song.genre} ${song.year > 0 ? song.year : ''}"
               .toLowerCase();
     }
   }
@@ -211,6 +217,20 @@ class _LibraryScreenState extends State<LibraryScreen> {
           case LyricFilter.all:
             matchesLyricFilter = true;
             break;
+        }
+
+        if (_albumFilter != null && song.album.trim() != _albumFilter) {
+          return false;
+        }
+        if (_artistFilter != null &&
+            getPrimaryArtist(song.artist).trim() != _artistFilter) {
+          return false;
+        }
+        if (_genreFilter != null && song.genre != _genreFilter) {
+          return false;
+        }
+        if (_yearFilter != null && song.year != _yearFilter) {
+          return false;
         }
 
         return matchesQuery && matchesLyricFilter;
@@ -366,7 +386,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   Widget build(BuildContext context) {
     return GradientBackground(
       child: Scaffold(
-        backgroundColor: Color(0xFF0D1B2A),
+        backgroundColor: AppTheme.background,
         appBar: AppBar(
           automaticallyImplyLeading: false,
           backgroundColor: Colors.transparent,
@@ -385,7 +405,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
           children: [
             Padding(
               padding: const EdgeInsets.all(12),
-              child: Row(children: [searchBar(), filterBotton()]),
+              child: Row(
+                children: [searchBar(), filterBotton(), advancedFiltersButton()],
+              ),
             ),
             progressbar(dm),
             expandedlist(),
@@ -413,10 +435,207 @@ class _LibraryScreenState extends State<LibraryScreen> {
     );
   }
 
+  bool get _hasAdvancedFilters =>
+      _albumFilter != null ||
+      _artistFilter != null ||
+      _genreFilter != null ||
+      _yearFilter != null;
+
+  Widget advancedFiltersButton() {
+    return IconButton(
+      tooltip: 'Filters',
+      icon: Icon(
+        Icons.tune,
+        color: _hasAdvancedFilters ? AppTheme.accent : Colors.white,
+      ),
+      onPressed: _showAdvancedFilters,
+    );
+  }
+
+  Widget _filterDropdown<T>({
+    required String label,
+    required T? value,
+    required List<T> items,
+    required String Function(T) text,
+    required ValueChanged<T?> onChanged,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(color: Colors.white70, fontSize: 12),
+          ),
+          DropdownButton<T?>(
+            isExpanded: true,
+            value: value,
+            dropdownColor: AppTheme.backgroundAlt,
+            iconEnabledColor: Colors.white70,
+            underline: Container(height: 1, color: Colors.white24),
+            style: const TextStyle(color: Colors.white),
+            items: [
+              DropdownMenuItem<T?>(value: null, child: const Text('All')),
+              ...items.map(
+                (item) => DropdownMenuItem<T?>(
+                  value: item,
+                  child: Text(text(item), overflow: TextOverflow.ellipsis),
+                ),
+              ),
+            ],
+            onChanged: onChanged,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showAdvancedFilters() async {
+    final albums = <String>{};
+    final artists = <String>{};
+    final genres = <String>{};
+    final years = <int>{};
+    for (final song in allSongs) {
+      final album = song.album.trim();
+      if (album.isNotEmpty) albums.add(album);
+      final artist = getPrimaryArtist(song.artist).trim();
+      if (artist.isNotEmpty) artists.add(artist);
+      if (song.genre.isNotEmpty) genres.add(song.genre);
+      if (song.year > 0) years.add(song.year);
+    }
+    final albumList = albums.toList()
+      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+    final artistList = artists.toList()
+      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+    final genreList = genres.toList()
+      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+    final yearList = years.toList()..sort((a, b) => b.compareTo(a));
+
+    String? album = _albumFilter;
+    String? artist = _artistFilter;
+    String? genre = _genreFilter;
+    int? year = _yearFilter;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppTheme.background,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Padding(
+              padding: EdgeInsets.fromLTRB(
+                16,
+                16,
+                16,
+                16 + MediaQuery.of(sheetContext).viewInsets.bottom,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'Filters',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () => setSheetState(() {
+                            album = null;
+                            artist = null;
+                            genre = null;
+                            year = null;
+                          }),
+                          child: const Text(
+                            'Clear',
+                            style: TextStyle(color: Colors.white70),
+                          ),
+                        ),
+                      ],
+                    ),
+                    _filterDropdown<String>(
+                      label: 'Album',
+                      value: album,
+                      items: albumList,
+                      text: (v) => v,
+                      onChanged: (v) => setSheetState(() => album = v),
+                    ),
+                    _filterDropdown<String>(
+                      label: 'Artist',
+                      value: artist,
+                      items: artistList,
+                      text: (v) => v,
+                      onChanged: (v) => setSheetState(() => artist = v),
+                    ),
+                    _filterDropdown<String>(
+                      label: 'Genre',
+                      value: genre,
+                      items: genreList,
+                      text: (v) => v,
+                      onChanged: (v) => setSheetState(() => genre = v),
+                    ),
+                    _filterDropdown<int>(
+                      label: 'Year',
+                      value: year,
+                      items: yearList,
+                      text: (v) => v.toString(),
+                      onChanged: (v) => setSheetState(() => year = v),
+                    ),
+                    if (genreList.isEmpty && yearList.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 12),
+                        child: Text(
+                          'No genre or year info yet. Run More > Scan music to load it.',
+                          style: TextStyle(color: Colors.white54, fontSize: 12),
+                        ),
+                      ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.accent,
+                          foregroundColor: Colors.white,
+                        ),
+                        onPressed: () => Navigator.of(sheetContext).pop(),
+                        child: const Text('Apply'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (!mounted) {
+      return;
+    }
+    _albumFilter = album;
+    _artistFilter = artist;
+    _genreFilter = genre;
+    _yearFilter = year;
+    _applyFilters();
+  }
+
   Widget floatingActionButton(DownloadManager dm) {
     return FloatingActionButton(
       onPressed: dm.isRunning ? null : downloadAll,
-      backgroundColor: Colors.blueAccent,
+      backgroundColor: AppTheme.accent,
       child: Icon(
         dm.isRunning ? Icons.downloading : Icons.download,
         color: Colors.white,
@@ -431,7 +650,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
         onChanged: filterSongs,
         style: const TextStyle(color: Colors.white),
         decoration: InputDecoration(
-          hintText: "Search song, artist or album...",
+          hintText: "Search song, artist, album, genre or year...",
           hintStyle: const TextStyle(color: Colors.white54),
           filled: true,
           fillColor: Colors.white12,
@@ -455,7 +674,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
         0,
         0,
       ),
-      color: Color(0xFF0D1B2A),
+      color: AppTheme.background,
       elevation: 8,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       items: [

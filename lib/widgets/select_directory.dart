@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:timelyr/theme/app_theme.dart';
 
 class SelectDirectory extends StatelessWidget {
   const SelectDirectory({super.key});
@@ -9,7 +10,7 @@ class SelectDirectory extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      backgroundColor: const Color(0xFF0D1B2A),
+      backgroundColor: AppTheme.background,
       title: const Text(
         'Select Music Folder',
         textAlign: TextAlign.center,
@@ -29,7 +30,7 @@ class SelectDirectory extends StatelessWidget {
         ),
         ElevatedButton(
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.blueAccent,
+            backgroundColor: AppTheme.accent,
             foregroundColor: Colors.black87,
           ),
           onPressed: () async {

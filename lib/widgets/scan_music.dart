@@ -3,6 +3,7 @@ import 'package:timelyr/services/file_service.dart';
 import 'package:timelyr/utils/app_storage.dart';
 import '../utils/default_music_path.dart';
 import 'select_directory.dart';
+import 'package:timelyr/theme/app_theme.dart';
 
 class ScanMusic extends StatefulWidget {
   const ScanMusic({super.key});
@@ -88,7 +89,7 @@ class _ScanMusicState extends State<ScanMusic> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      backgroundColor: const Color(0xFF0D1B2A),
+      backgroundColor: AppTheme.background,
       title: Text(
         _isScanning
             ? 'Scanning library...'
@@ -101,8 +102,8 @@ class _ScanMusicState extends State<ScanMusic> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const LinearProgressIndicator(
-                  color: Colors.blueAccent,
+                LinearProgressIndicator(
+                  color: AppTheme.accent,
                   backgroundColor: Colors.white24,
                 ),
                 const SizedBox(height: 12),
@@ -123,7 +124,7 @@ class _ScanMusicState extends State<ScanMusic> {
         ),
         ElevatedButton(
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.blueAccent,
+            backgroundColor: AppTheme.accent,
             foregroundColor: Colors.black87,
           ),
           onPressed: _isScanning ? null : _startScan,

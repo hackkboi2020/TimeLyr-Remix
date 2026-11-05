@@ -5,8 +5,11 @@ import 'package:timelyr/services/file_service.dart';
 import 'package:timelyr/services/lyrics_service.dart';
 import 'package:timelyr/widgets/scan_music.dart';
 import 'package:timelyr/widgets/select_directory.dart';
+import '../services/backup_service.dart';
+import '../utils/ttml_miss_cache.dart';
 import '../services/notifications_settings.dart';
 import '../utils/app_storage.dart';
+import 'package:timelyr/theme/app_theme.dart';
 
 class MoreScreen extends StatefulWidget {
   const MoreScreen({super.key});
@@ -34,6 +37,114 @@ class _MoreScreenState extends State<MoreScreen> {
   void loadWatcherPref() async {
     watcherEnabled = await AppStorage.loadWatcherEnabled();
     setState(() {});
+  }
+
+  void _showThemeDialog() {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: AppTheme.background,
+              title: const Text('Theme', style: TextStyle(color: Colors.white)),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: ListView(
+                  shrinkWrap: true,
+                  children: [
+                    for (final preset in AppTheme.presets)
+                      ListTile(
+                        leading: Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: LinearGradient(colors: preset.gradient),
+                            border: Border.all(color: preset.accent, width: 3),
+                          ),
+                        ),
+                        title: Text(
+                          preset.name,
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                        trailing: AppTheme.current.id == preset.id
+                            ? Icon(Icons.check, color: preset.accent)
+                            : null,
+                        onTap: () async {
+                          await AppTheme.setPreset(preset.id);
+                          setDialogState(() {});
+                          if (mounted) {
+                            setState(() {});
+                          }
+                        },
+                      ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text(
+                    'Close',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _exportBackup() async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final result = await BackupService.exportBackup();
+      if (result == null) {
+        return;
+      }
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Backup saved (${result.lyricsCount} lyric files).'),
+        ),
+      );
+    } catch (_) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Could not create the backup.')),
+      );
+    }
+  }
+
+  Future<void> _importBackup() async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final result = await BackupService.importBackup();
+      if (result == null) {
+        return;
+      }
+      enableNotifications();
+      loadWatcherPref();
+      if (mounted) {
+        setState(() {});
+      }
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            'Restored ${result.restored} lyric files '
+            '(${result.skipped} already existed, '
+            '${result.missing} had no matching song).',
+          ),
+        ),
+      );
+    } on BackupFormatException catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (_) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Could not import the backup.')),
+      );
+    }
   }
 
   void _fixBadLrcs(BuildContext context) {
@@ -67,7 +178,7 @@ class _MoreScreenState extends State<MoreScreen> {
             }
 
             return AlertDialog(
-              backgroundColor: const Color(0xFF0D1B2A),
+              backgroundColor: AppTheme.background,
               title: Text(
                 total == 0 && fixed == 0 && currentSong.isEmpty
                     ? 'Searching for damaged LRC files...'
@@ -80,8 +191,8 @@ class _MoreScreenState extends State<MoreScreen> {
                   ? Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const LinearProgressIndicator(
-                          color: Colors.blueAccent,
+                        LinearProgressIndicator(
+                          color: AppTheme.accent,
                           backgroundColor: Colors.white24,
                         ),
                         if (currentSong.isNotEmpty) ...[
@@ -122,7 +233,7 @@ class _MoreScreenState extends State<MoreScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0D1B2A),
+      backgroundColor: AppTheme.background,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -174,8 +285,8 @@ class _MoreScreenState extends State<MoreScreen> {
             ),
             trailing: Switch(
               value: notificationsEnable,
-              activeThumbColor: Colors.blueAccent,
-              activeTrackColor: Colors.blueAccent.withValues(alpha: 0.25),
+              activeThumbColor: AppTheme.accent,
+              activeTrackColor: AppTheme.accent.withValues(alpha: 0.25),
               inactiveThumbColor: Colors.white70,
               inactiveTrackColor: Colors.white24,
               onChanged: (v) async {
@@ -185,6 +296,15 @@ class _MoreScreenState extends State<MoreScreen> {
                 setState(() {});
               },
             ),
+          ),
+          ListTile(
+            leading: Icon(Icons.palette, color: Colors.white),
+            title: Text('Theme', style: TextStyle(color: Colors.white)),
+            subtitle: Text(
+              AppTheme.current.name,
+              style: const TextStyle(color: Colors.white60, fontSize: 11),
+            ),
+            onTap: _showThemeDialog,
           ),
           ListTile(
             leading: Icon(Icons.sd_card, color: Colors.white),
@@ -211,8 +331,8 @@ class _MoreScreenState extends State<MoreScreen> {
             ),
             trailing: Switch(
               value: watcherEnabled,
-              activeThumbColor: Colors.blueAccent,
-              activeTrackColor: Colors.blueAccent.withValues(alpha: 0.25),
+              activeThumbColor: AppTheme.accent,
+              activeTrackColor: AppTheme.accent.withValues(alpha: 0.25),
               inactiveThumbColor: Colors.white70,
               inactiveTrackColor: Colors.white24,
               onChanged: (v) async {
@@ -244,6 +364,50 @@ class _MoreScreenState extends State<MoreScreen> {
               style: TextStyle(color: Colors.white60, fontSize: 11),
             ),
             onTap: () => _fixBadLrcs(context),
+          ),
+          ListTile(
+            leading: Icon(Icons.refresh, color: Colors.white),
+            title: Text(
+              'Retry missing TTML',
+              style: TextStyle(color: Colors.white),
+            ),
+            subtitle: const Text(
+              'Forget failed TTML lookups so they are tried again',
+              style: TextStyle(color: Colors.white60, fontSize: 11),
+            ),
+            onTap: () async {
+              final messenger = ScaffoldMessenger.of(context);
+              await TtmlMissCache.clearAll();
+              messenger.showSnackBar(
+                const SnackBar(
+                  content: Text('Done. Missing TTML will be searched again.'),
+                ),
+              );
+            },
+          ),
+          ListTile(
+            leading: Icon(Icons.upload_file, color: Colors.white),
+            title: Text(
+              'Export backup',
+              style: TextStyle(color: Colors.white),
+            ),
+            subtitle: const Text(
+              'Save your lyrics and settings to a file',
+              style: TextStyle(color: Colors.white60, fontSize: 11),
+            ),
+            onTap: _exportBackup,
+          ),
+          ListTile(
+            leading: Icon(Icons.download, color: Colors.white),
+            title: Text(
+              'Import backup',
+              style: TextStyle(color: Colors.white),
+            ),
+            subtitle: const Text(
+              'Restore lyrics and settings from a backup file',
+              style: TextStyle(color: Colors.white60, fontSize: 11),
+            ),
+            onTap: _importBackup,
           ),
           ListTile(
             leading: Icon(Icons.info, color: Colors.white),

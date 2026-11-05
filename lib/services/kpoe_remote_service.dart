@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:convert';
 
@@ -5,6 +6,23 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:timelyr/models/lyric_result.dart';
+import 'package:timelyr/utils/lyrics_utils.dart';
+
+/// Filled in by fetch calls so callers can tell "no result" from "no network".
+class KpoeFetchStats {
+  /// True once any server answered with a definitive 200 or 404.
+  bool reachedServer = false;
+}
+
+class _KpoeQuery {
+  final String title;
+  final String artist;
+  final String album;
+  final String duration;
+  const _KpoeQuery(this.title, this.artist, this.album, this.duration);
+
+  String get key => '$title|$artist|$album|$duration';
+}
 
 class KpoeRemoteService {
   static final Set<String> _temporarilyDisabledBases = <String>{};
@@ -366,6 +384,7 @@ class KpoeRemoteService {
     String? duration,
     String format = 'json',
     String? customBaseUrl,
+    KpoeFetchStats? stats,
   }) async {
     final safeArtist = (artist.isEmpty) ? "" : artist.trim();
     final safeTitle = (title.isEmpty) ? "" : title.trim();
@@ -409,7 +428,12 @@ class KpoeRemoteService {
 
       for (final url in urls) {
         try {
-          final r = await http.get(url, headers: headers);
+          final r = await http
+              .get(url, headers: headers)
+              .timeout(const Duration(seconds: 8));
+          if (r.statusCode == 200 || r.statusCode == 404) {
+            stats?.reachedServer = true;
+          }
           print('Kpoe GET $url -> ${r.statusCode} (len=${r.body.length})');
           if (r.statusCode == 200 && r.body.isNotEmpty && r.body != '{}') {
             return r.body;
@@ -431,6 +455,53 @@ class KpoeRemoteService {
       }
     }
 
+    return null;
+  }
+
+  /// Tries the exact tags first, then progressively looser variants:
+  /// cleaned title + primary artist, then without album. With [aggressive]
+  /// (manual search, where the user checks the result) it also drops duration.
+  static Future<String?> fetchWithFallbacks(
+    String title,
+    String artist, {
+    String? album,
+    String? duration,
+    bool aggressive = false,
+    KpoeFetchStats? stats,
+  }) async {
+    final rawAlbum = (album ?? '').trim();
+    final rawDuration = (duration ?? '').trim();
+    final cleanTitle = cleanTrackTitle(title);
+    final cleanArtist = searchArtist(artist);
+
+    final candidates = <_KpoeQuery>[];
+    final seen = <String>{};
+    void add(String t, String a, String al, String d) {
+      final q = _KpoeQuery(t.trim(), a.trim(), al.trim(), d.trim());
+      if (seen.add(q.key)) {
+        candidates.add(q);
+      }
+    }
+
+    add(title, artist, rawAlbum, rawDuration);
+    add(cleanTitle, cleanArtist, rawAlbum, rawDuration);
+    add(cleanTitle, cleanArtist, '', rawDuration);
+    if (aggressive) {
+      add(cleanTitle, cleanArtist, '', '');
+    }
+
+    for (final q in candidates) {
+      final body = await fetchFromKpoe(
+        q.title,
+        q.artist,
+        album: q.album,
+        duration: q.duration,
+        stats: stats,
+      );
+      if (body != null && body.trim().isNotEmpty) {
+        return body;
+      }
+    }
     return null;
   }
 

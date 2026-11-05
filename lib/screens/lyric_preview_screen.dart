@@ -4,6 +4,7 @@ import 'package:timelyr/models/lyric_result.dart';
 import 'package:timelyr/services/file_service.dart';
 import '../models/song.dart';
 import 'package:path/path.dart' as p;
+import 'package:timelyr/theme/app_theme.dart';
 
 class LyricPreviewScreen extends StatelessWidget {
   final LyricResult result;
@@ -34,7 +35,7 @@ class LyricPreviewScreen extends StatelessWidget {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0D1B2A),
+      backgroundColor: AppTheme.background,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -135,7 +136,7 @@ class LyricPreviewScreen extends StatelessWidget {
                                   onPressed: () =>
                                       Navigator.of(dialogContext).pop(true),
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.blueAccent,
+                                    backgroundColor: AppTheme.accent,
                                   ),
                                   child: const Text(
                                     "Replace",
@@ -201,7 +202,7 @@ class LyricPreviewScreen extends StatelessWidget {
                       style: TextStyle(color: Colors.white),
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blueAccent,
+                      backgroundColor: AppTheme.accent,
                     ),
                   ),
 

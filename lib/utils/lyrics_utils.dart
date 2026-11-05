@@ -26,3 +26,47 @@ String pickBestLyrics(String synced, String plain) {
 
   return plain;
 }
+
+/// Cleans a track title for lookups on lyrics servers: removes
+/// "(feat. X)", "[ft. X]", "- Remastered 2011", "(Remastered)", etc.
+/// Returns the original (trimmed) title if cleaning would leave it empty.
+String cleanTrackTitle(String title) {
+  var t = title.trim();
+  t = t.replaceAll(
+    RegExp(
+      r'\s*[\(\[]\s*(?:feat\.?|ft\.?|featuring|with)\b[^\)\]]*[\)\]]',
+      caseSensitive: false,
+    ),
+    '',
+  );
+  t = t.replaceAll(
+    RegExp(
+      r'\s*[\(\[]\s*(?:\d{4}\s+)?(?:remaster(?:ed)?|single version|radio edit)[^\)\]]*[\)\]]',
+      caseSensitive: false,
+    ),
+    '',
+  );
+  t = t.replaceAll(
+    RegExp(
+      r'\s*[-–]\s*(?:\d{4}\s+)?(?:remaster(?:ed)?|single version|radio edit)\b.*$',
+      caseSensitive: false,
+    ),
+    '',
+  );
+  t = t.replaceAll(
+    RegExp(r'\s+(?:feat\.?|ft\.?|featuring)\s+.*$', caseSensitive: false),
+    '',
+  );
+  t = t.trim();
+  return t.isEmpty ? title.trim() : t;
+}
+
+/// First credited artist, without "feat." parts. Does not split on "&" so
+/// names like "Simon & Garfunkel" stay intact.
+String searchArtist(String artist) {
+  var a = getPrimaryArtist(artist);
+  a = a.split(
+    RegExp(r'\s+(?:feat\.?|ft\.?|featuring)\s+', caseSensitive: false),
+  ).first;
+  return a.trim();
+}

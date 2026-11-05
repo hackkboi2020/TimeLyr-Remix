@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/notifications_settings.dart';
+import 'package:timelyr/theme/app_theme.dart';
 
 class ToggleNotifications extends StatefulWidget {
   const ToggleNotifications({super.key});
@@ -25,7 +26,7 @@ class _ToggleNotificationsState extends State<ToggleNotifications> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      backgroundColor: Color(0xFF0D1B2A),
+      backgroundColor: AppTheme.background,
       title: toggle != true
           ? Text(
               'Enable notifications',

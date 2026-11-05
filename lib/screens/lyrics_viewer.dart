@@ -4,10 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:timelyr/screens/search_screen.dart';
 import 'package:timelyr/utils/artwork_cache.dart';
 import '../models/song.dart';
+import '../models/lyric_result.dart';
 import '../services/lyrics_service.dart';
 import '../services/file_service.dart';
 import 'dart:typed_data';
 import 'package:path/path.dart' as p;
+import 'package:timelyr/theme/app_theme.dart';
 
 class LyricsViewer extends StatefulWidget {
   final Song song;
@@ -90,8 +92,8 @@ class _LyricsViewerState extends State<LyricsViewer> {
                       opacity: 0.35,
                     )
                   : null,
-              gradient: const LinearGradient(
-                colors: [Color(0xFF0D1B2A), Color(0xFF1B263B)],
+              gradient: LinearGradient(
+                colors: [AppTheme.background, AppTheme.backgroundAlt],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
               ),
@@ -242,11 +244,14 @@ class _LyricsViewerState extends State<LyricsViewer> {
                               ),
                             ),
                           );
-                          if (result != null) {
+                          if (result is LyricResult) {
                             await LyricsService.saveManualResult(
                               widget.song,
                               result,
                             );
+                          }
+                          // A manual TTML search returns `true` once saved.
+                          if (result != null) {
                             await loadLyrics();
                           }
                         },
@@ -256,7 +261,7 @@ class _LyricsViewerState extends State<LyricsViewer> {
                           style: TextStyle(color: Colors.white),
                         ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blueAccent,
+                          backgroundColor: AppTheme.accent,
                         ),
                       ),
 

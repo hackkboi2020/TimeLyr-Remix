@@ -3,6 +3,7 @@ import 'package:timelyr/utils/app_storage.dart';
 import 'package:timelyr/utils/permissions.dart';
 import '../widgets/gradient_background.dart';
 import 'main_screen.dart';
+import 'package:timelyr/theme/app_theme.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -11,7 +12,7 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return GradientBackground(
       child: Scaffold(
-        backgroundColor: Color(0xFF0D1B2A),
+        backgroundColor: AppTheme.background,
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
