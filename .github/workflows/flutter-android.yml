@@ -10,6 +10,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout
@@ -57,10 +59,12 @@ jobs:
           name: app-release
           path: build/app/outputs/flutter-apk/*
 
+      # Only runs for tag pushes like v1.2.0 (not on every push to main).
       - name: Push to Releases
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: ncipollo/release-action@v1
         with:
-          artifacts: "build/app/outputs/apk/release/*"
-          tag: 
-          token: ${{ secrets.TOKEN }}
-
+          artifacts: "build/app/outputs/flutter-apk/*.apk"
+          tag: ${{ github.ref_name }}
+          allowUpdates: true
+          token: ${{ secrets.GITHUB_TOKEN }}
