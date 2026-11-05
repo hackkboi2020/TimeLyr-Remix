@@ -66,7 +66,13 @@ jobs:
           ANDROID_SIGNING_STORE_PASSWORD: ${{ secrets.ANDROID_SIGNING_STORE_PASSWORD }}
           ANDROID_SIGNING_KEY_ALIAS: ${{ secrets.ANDROID_SIGNING_KEY_ALIAS }}
           ANDROID_SIGNING_KEY_PASSWORD: ${{ secrets.ANDROID_SIGNING_KEY_PASSWORD }}
-        run: flutter build apk --release --split-per-abi --build-number=$((GITHUB_RUN_NUMBER + 100))
+        run: |
+          # On a v* tag, the tag becomes the app's version name (v1.2.4 -> 1.2.4).
+          EXTRA=""
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            EXTRA="--build-name=${GITHUB_REF_NAME#v}"
+          fi
+          flutter build apk --release --split-per-abi --build-number=$((GITHUB_RUN_NUMBER + 100)) $EXTRA
  
       - name: Upload APK
         uses: actions/upload-artifact@v4
@@ -82,4 +88,5 @@ jobs:
           artifacts: "build/app/outputs/flutter-apk/*.apk"
           tag: ${{ github.ref_name }}
           allowUpdates: true
+          generateReleaseNotes: true
           token: ${{ secrets.GITHUB_TOKEN }}
