@@ -27,7 +27,7 @@
     </queries>
 
     <application
-        android:label="TimeLyr Remix"
+        android:label="HackLyr"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
 
