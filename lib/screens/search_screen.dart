@@ -5,6 +5,7 @@ import 'package:timelyr/widgets/gradient_background.dart';
 import 'lyric_preview_screen.dart';
 import 'ttml_preview_screen.dart';
 import '../services/file_service.dart';
+import '../services/word_sync_providers.dart';
 import '../models/song.dart';
 import 'package:timelyr/theme/app_theme.dart';
 
@@ -37,7 +38,7 @@ class _SearchScreenState extends State<SearchScreen> {
   String? _error;
   List<LyricResult> results = [];
   SearchMode _mode = SearchMode.lrc;
-  String? _ttmlResult;
+  List<WordSyncResult> _wordResults = [];
   String _ttmlTitle = '';
   String _ttmlArtist = '';
 
@@ -61,7 +62,7 @@ class _SearchScreenState extends State<SearchScreen> {
     if (title.isEmpty || artist.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("TTML search needs at least a title and an artist."),
+          content: Text("Word-synced search needs at least a title and an artist."),
         ),
       );
       return;
@@ -70,7 +71,7 @@ class _SearchScreenState extends State<SearchScreen> {
     setState(() {
       isSearching = true;
       results = [];
-      _ttmlResult = null;
+      _wordResults = [];
       _error = null;
     });
 
@@ -81,7 +82,7 @@ class _SearchScreenState extends State<SearchScreen> {
           title == widget.initialTitle.trim() &&
           artist == widget.initialArtist.trim();
 
-      final ttml = await FileService.searchTtml(
+      final found = await FileService.searchWordSynced(
         title: title,
         artist: artist,
         album: album,
@@ -93,10 +94,10 @@ class _SearchScreenState extends State<SearchScreen> {
       }
 
       setState(() {
-        if (ttml == null) {
-          _error = "No TTML found for the given criteria.";
+        if (found.isEmpty) {
+          _error = "No word-synced lyrics found for the given criteria.";
         } else {
-          _ttmlResult = ttml;
+          _wordResults = found;
           _ttmlTitle = title;
           _ttmlArtist = artist;
         }
@@ -222,7 +223,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   ),
                   ButtonSegment<SearchMode>(
                     value: SearchMode.ttml,
-                    label: Text("TTML"),
+                    label: Text("Word-synced"),
                     icon: Icon(Icons.graphic_eq),
                   ),
                 ],
@@ -231,7 +232,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   setState(() {
                     _mode = selection.first;
                     results = [];
-                    _ttmlResult = null;
+                    _wordResults = [];
                     _error = null;
                   });
                 },
@@ -390,44 +391,48 @@ class _SearchScreenState extends State<SearchScreen> {
                   );
                 },
               ),
-            if (!isSearching && _ttmlResult != null)
-              Card(
-                color: Colors.white10,
-                margin: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: ListTile(
-                  title: Text(
-                    _ttmlTitle,
-                    style: const TextStyle(color: Colors.white),
+            if (!isSearching && _wordResults.isNotEmpty)
+              for (final wordResult in _wordResults)
+                Card(
+                  color: Colors.white10,
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 6,
                   ),
-                  subtitle: Text(
-                    "$_ttmlArtist • TTML lyrics found",
-                    style: const TextStyle(color: Colors.white70),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
                   ),
-                  trailing: const Icon(
-                    Icons.chevron_right,
-                    color: Colors.white,
-                  ),
-                  onTap: () async {
-                    final saved = await Navigator.push<bool>(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => TtmlPreviewScreen(
-                          ttml: _ttmlResult!,
-                          song: widget.song,
-                          title: _ttmlTitle,
-                          artist: _ttmlArtist,
+                  child: ListTile(
+                    title: Text(
+                      wordResult.source,
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                    subtitle: Text(
+                      "$_ttmlTitle • $_ttmlArtist • ${wordResult.format == WordSyncFormat.ttml ? 'TTML' : 'Enhanced LRC'}",
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                    trailing: const Icon(
+                      Icons.chevron_right,
+                      color: Colors.white,
+                    ),
+                    onTap: () async {
+                      final saved = await Navigator.push<bool>(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => TtmlPreviewScreen(
+                            result: wordResult,
+                            song: widget.song,
+                            title: _ttmlTitle,
+                            artist: _ttmlArtist,
+                          ),
                         ),
-                      ),
-                    );
-                    if (saved == true && context.mounted) {
-                      Navigator.pop(context, true);
-                    }
-                  },
+                      );
+                      if (saved == true && context.mounted) {
+                        Navigator.pop(context, true);
+                      }
+                    },
+                  ),
                 ),
-              ),
             if (!isSearching && results.isEmpty && _error != null)
               Container(
                 margin: const EdgeInsets.symmetric(

@@ -7,6 +7,7 @@ import 'dart:async';
 import 'package:path/path.dart' as p;
 import 'package:timelyr/services/kpoe_remote_service.dart';
 import 'package:timelyr/utils/ttml_miss_cache.dart';
+import 'package:timelyr/services/word_sync_providers.dart';
 
 class FileService {
   static List<Song> librarySongs = [];
@@ -216,31 +217,56 @@ class FileService {
     }
   }
 
-  /// Fetches and saves the TTML for a song (automatic mode). Skips the network
-  /// when a valid TTML already exists or when a recent lookup found nothing;
-  /// pass [force] to ignore both.
+  /// True when the song's .lrc already has word-level (Enhanced LRC) timing.
+  static bool _lrcIsWordSynced(File lrc) {
+    try {
+      if (!lrc.existsSync()) return false;
+      final handle = lrc.openSync();
+      try {
+        final bytes = handle.readSync(4096);
+        return WordSyncProviders.hasWordTags(String.fromCharCodes(bytes));
+      } finally {
+        handle.closeSync();
+      }
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static bool _hasWordSyncedLrc(String songPath) {
+    final file = File(songPath);
+    final name = p.basenameWithoutExtension(file.path);
+    return _lrcIsWordSynced(File("${file.parent.path}/$name.lrc"));
+  }
+
+  static WordSyncQuery _queryFor(Song song) => WordSyncQuery(
+    title: song.title,
+    artist: song.artist,
+    album: song.album,
+    durationSec: song.durationSeconds,
+  );
+
+  /// Looks up word-synced lyrics for a song (automatic mode) across the
+  /// providers and saves the first hit. Skips the network when the song
+  /// already has word-synced lyrics or a recent lookup found nothing; pass
+  /// [force] to ignore both.
   static Future<bool> saveTTMLForSong(
     String songPath,
     Song song, {
     bool force = false,
   }) async {
     if (!force) {
-      if (_hasValidTtml(songPath)) return true;
+      if (_hasValidTtml(songPath) || _hasWordSyncedLrc(songPath)) return true;
       if (await TtmlMissCache.isMiss(songPath)) return false;
     }
 
-    final stats = KpoeFetchStats();
-    final ttml = await KpoeRemoteService.fetchWithFallbacks(
-      song.title,
-      song.artist,
-      album: song.album,
-      duration: song.durationSeconds <= 0
-          ? ''
-          : song.durationSeconds.toString(),
+    final stats = WordSyncStats();
+    final result = await WordSyncProviders.fetchBest(
+      _queryFor(song),
       stats: stats,
     );
 
-    if (ttml == null || ttml.trim().isEmpty) {
+    if (result == null) {
       // Only remember genuine "not found" answers, never network failures.
       if (stats.reachedServer) {
         await TtmlMissCache.recordMiss(songPath);
@@ -249,47 +275,55 @@ class FileService {
     }
 
     await TtmlMissCache.clear(songPath);
-
-    final converted = KpoeRemoteService.convertKpoeJsonToTtml(
-      ttml,
-      title: song.title,
-      artist: song.artist,
-    );
-
-    return _saveTTMLContent(songPath, song, converted);
+    return saveWordSyncResult(songPath, song, result);
   }
 
-  /// Manual TTML lookup with the tags the user typed. Returns the TTML text,
-  /// or null if nothing was found. Throws if no server could be reached.
-  static Future<String?> searchTtml({
+  /// Manual word-synced lookup across every provider. Throws if no server
+  /// could be reached; returns an empty list when nothing was found.
+  static Future<List<WordSyncResult>> searchWordSynced({
     required String title,
     required String artist,
     String album = '',
     int durationSeconds = 0,
   }) async {
-    final stats = KpoeFetchStats();
-    final body = await KpoeRemoteService.fetchWithFallbacks(
-      title,
-      artist,
-      album: album,
-      duration: durationSeconds <= 0 ? '' : durationSeconds.toString(),
-      aggressive: true,
+    final stats = WordSyncStats();
+    final results = await WordSyncProviders.search(
+      WordSyncQuery(
+        title: title,
+        artist: artist,
+        album: album,
+        durationSec: durationSeconds,
+      ),
       stats: stats,
     );
+    if (results.isEmpty && !stats.reachedServer) {
+      throw const SocketException('Lyrics servers unreachable');
+    }
+    return results;
+  }
 
-    if (body == null || body.trim().isEmpty) {
-      if (!stats.reachedServer) {
-        throw const SocketException('TTML servers unreachable');
-      }
-      return null;
+  /// Saves a word-synced result. TTML goes to .ttml; Enhanced LRC goes to
+  /// .lrc (it replaces a plain LRC, since it carries the same line timing plus
+  /// word timing). Returns false when a TTML had no word-level timing and was
+  /// saved as a plain LRC instead.
+  static Future<bool> saveWordSyncResult(
+    String songPath,
+    Song song,
+    WordSyncResult result, {
+    bool overwrite = false,
+  }) async {
+    if (result.format == WordSyncFormat.ttml) {
+      return _saveTTMLContent(songPath, song, result.content, overwrite: overwrite);
     }
 
-    final converted = KpoeRemoteService.convertKpoeJsonToTtml(
-      body,
-      title: title,
-      artist: artist,
-    );
-    return converted.trim().isEmpty ? null : converted;
+    final file = File(songPath);
+    final name = p.basenameWithoutExtension(file.path);
+    final lrc = File("${file.parent.path}/$name.lrc");
+    if (!overwrite && _lrcIsWordSynced(lrc)) {
+      return true;
+    }
+    await lrc.writeAsString(result.content);
+    return true;
   }
 
   /// Saves a TTML chosen by the user. Returns false when the TTML had no

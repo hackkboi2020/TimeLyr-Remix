@@ -4,20 +4,21 @@ import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:timelyr/services/file_service.dart';
 import 'package:timelyr/services/kpoe_remote_service.dart';
+import 'package:timelyr/services/word_sync_providers.dart';
 import 'package:timelyr/theme/app_theme.dart';
 
 import '../models/song.dart';
 
-/// Preview of a TTML found through manual search. Pops `true` once saved.
+/// Preview of a word-synced result found through manual search. Pops `true` once saved.
 class TtmlPreviewScreen extends StatefulWidget {
-  final String ttml;
+  final WordSyncResult result;
   final Song song;
   final String title;
   final String artist;
 
   const TtmlPreviewScreen({
     super.key,
-    required this.ttml,
+    required this.result,
     required this.song,
     required this.title,
     required this.artist,
@@ -30,13 +31,33 @@ class TtmlPreviewScreen extends StatefulWidget {
 class _TtmlPreviewScreenState extends State<TtmlPreviewScreen> {
   bool _saving = false;
 
-  /// True when every line has word-level timing (a real TTML worth keeping).
-  bool get _wordSynced => !KpoeRemoteService.hasParagraphWithoutAnySpan(
-    widget.ttml,
-  );
+  bool get _isElrc => widget.result.format == WordSyncFormat.elrc;
+
+  /// True when every line has word-level timing (worth keeping as word-synced).
+  bool get _wordSynced => _isElrc
+      ? WordSyncProviders.hasWordTags(widget.result.content)
+      : WordSyncProviders.ttmlIsWordLevel(widget.result.content);
 
   String get _previewText {
-    final lrc = KpoeRemoteService.convertTtmlToLrc(widget.ttml);
+    if (_isElrc) {
+      // Plain text: drop timing tags, show background vocals in (brackets).
+      return widget.result.content
+          .split('\n')
+          .map((line) {
+            final bg = RegExp(r'^\[bg:(.*)\]$', caseSensitive: false)
+                .firstMatch(line.trim());
+            final isBg = bg != null;
+            var text = isBg ? bg.group(1)! : line;
+            text = text
+                .replaceAll(RegExp(r'<\d+:\d{1,2}(?:[.:]\d{1,3})?>'), '')
+                .replaceFirst(RegExp(r'^\[[^\]]*\]'), '')
+                .trim();
+            return isBg && text.isNotEmpty ? '   ($text)' : text;
+          })
+          .where((line) => line.isNotEmpty)
+          .join('\n');
+    }
+    final lrc = KpoeRemoteService.convertTtmlToLrc(widget.result.content);
     return lrc
         .split('\n')
         .map((line) => line.replaceFirst(RegExp(r'^\[[^\]]*\]'), ''))
@@ -47,7 +68,7 @@ class _TtmlPreviewScreenState extends State<TtmlPreviewScreen> {
   Future<void> _save() async {
     final file = File(widget.song.path);
     final base = p.basenameWithoutExtension(file.path);
-    final targetExt = _wordSynced ? 'ttml' : 'lrc';
+    final targetExt = (_isElrc || !_wordSynced) ? 'lrc' : 'ttml';
     final target = File("${file.parent.path}/$base.$targetExt");
 
     if (target.existsSync()) {
@@ -91,18 +112,18 @@ class _TtmlPreviewScreenState extends State<TtmlPreviewScreen> {
 
     setState(() => _saving = true);
     try {
-      await FileService.saveTtmlContent(
+      await FileService.saveWordSyncResult(
         widget.song.path,
         widget.song,
-        widget.ttml,
+        widget.result,
         overwrite: true,
       );
-      if (_wordSynced) {
+      if (!_isElrc && _wordSynced) {
         // The viewer reads the .lrc, so make sure one exists too.
         await FileService.saveLrcFromTtmlIfMissing(
           widget.song.path,
           widget.song,
-          widget.ttml,
+          widget.result.content,
         );
       }
 
@@ -110,9 +131,11 @@ class _TtmlPreviewScreenState extends State<TtmlPreviewScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            _wordSynced
-                ? "TTML saved."
-                : "No word-level timing in this result, saved as LRC.",
+            !_wordSynced
+                ? "No word-level timing in this result, saved as LRC."
+                : _isElrc
+                ? "Word-synced lyrics saved."
+                : "TTML saved.",
           ),
         ),
       );
@@ -173,7 +196,7 @@ class _TtmlPreviewScreenState extends State<TtmlPreviewScreen> {
                 ),
                 child: Text(
                   _wordSynced
-                      ? "Word-synced (TTML)"
+                      ? "Word-synced · ${widget.result.source}"
                       : "Line-synced only, will be saved as LRC",
                   style: const TextStyle(color: Colors.white, fontSize: 12),
                 ),
@@ -207,7 +230,7 @@ class _TtmlPreviewScreenState extends State<TtmlPreviewScreen> {
                         )
                       : const Icon(Icons.check, color: Colors.white),
                   label: Text(
-                    _wordSynced ? "Use this TTML" : "Use as LRC",
+                    _wordSynced ? "Use these lyrics" : "Use as LRC",
                     style: const TextStyle(color: Colors.white),
                   ),
                   style: ElevatedButton.styleFrom(

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:ui' show Color;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
@@ -95,6 +96,8 @@ class BackupService {
         AppStorage.watcherEnabledKey: await AppStorage.loadWatcherEnabled(),
         'notifications_enabled': await NotificationSettings.isEnabled(),
         'theme': AppTheme.current.id,
+        'custom_theme': AppTheme.customAsJson(),
+        'accent': AppTheme.accentOverride?.toARGB32(),
       },
       'lyrics': lyrics,
     };
@@ -162,9 +165,17 @@ class BackupService {
       if (notifications is bool) {
         await NotificationSettings.setEnabled(notifications);
       }
+      final customTheme = settings['custom_theme'];
+      if (customTheme != null) {
+        await AppTheme.restoreCustom(customTheme);
+      }
       final theme = settings['theme'];
       if (theme is String) {
         await AppTheme.setPreset(theme);
+      }
+      final accent = settings['accent'];
+      if (accent is num) {
+        await AppTheme.setAccentOverride(Color(accent.toInt()));
       }
     }
 

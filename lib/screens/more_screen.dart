@@ -6,6 +6,8 @@ import 'package:timelyr/services/lyrics_service.dart';
 import 'package:timelyr/widgets/scan_music.dart';
 import 'package:timelyr/widgets/select_directory.dart';
 import '../services/backup_service.dart';
+import '../utils/view_settings.dart';
+import '../widgets/color_picker_dialog.dart';
 import '../utils/ttml_miss_cache.dart';
 import '../services/notifications_settings.dart';
 import '../utils/app_storage.dart';
@@ -39,12 +41,166 @@ class _MoreScreenState extends State<MoreScreen> {
     setState(() {});
   }
 
+  Future<void> _pickAccent(VoidCallback refresh) async {
+    final picked = await showColorPickerDialog(
+      context,
+      initial: AppTheme.accent,
+      title: 'Accent color',
+    );
+    if (picked != null) {
+      await AppTheme.setAccentOverride(picked);
+      refresh();
+    }
+  }
+
+  Future<void> _editCustomTheme(VoidCallback refresh) async {
+    final base = AppTheme.custom ?? AppTheme.current;
+    var accent = base.accent;
+    var background = base.background;
+    var cards = base.backgroundAlt;
+    final gradient = List<Color>.of(base.gradient);
+    while (gradient.length < 3) {
+      gradient.add(gradient.last);
+    }
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (innerContext, setInner) {
+            Widget swatch(String label, Color color, ValueChanged<Color> set) {
+              return ListTile(
+                dense: true,
+                leading: CircleAvatar(backgroundColor: color, radius: 14),
+                title: Text(label, style: const TextStyle(color: Colors.white)),
+                onTap: () async {
+                  final picked = await showColorPickerDialog(
+                    innerContext,
+                    initial: color,
+                    title: label,
+                  );
+                  if (picked != null) {
+                    setInner(() => set(picked));
+                  }
+                },
+              );
+            }
+
+            return AlertDialog(
+              backgroundColor: AppTheme.background,
+              title: const Text(
+                'Custom theme',
+                style: TextStyle(color: Colors.white),
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      height: 56,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(14),
+                        gradient: LinearGradient(
+                          colors: gradient,
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                      ),
+                      child: Center(
+                        child: Text(
+                          'Preview',
+                          style: TextStyle(
+                            color: accent,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                    swatch('Accent', accent, (c) => accent = c),
+                    swatch('Background', background, (c) => background = c),
+                    swatch('Cards', cards, (c) => cards = c),
+                    swatch('Gradient start', gradient[0], (c) => gradient[0] = c),
+                    swatch('Gradient middle', gradient[1], (c) => gradient[1] = c),
+                    swatch('Gradient end', gradient[2], (c) => gradient[2] = c),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text(
+                    'Cancel',
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.accent,
+                  ),
+                  onPressed: () async {
+                    await AppTheme.saveCustom(
+                      background: background,
+                      backgroundAlt: cards,
+                      accent: accent,
+                      gradient: List<Color>.of(gradient),
+                    );
+                    if (dialogContext.mounted) {
+                      Navigator.of(dialogContext).pop();
+                    }
+                    refresh();
+                  },
+                  child: const Text(
+                    'Save',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   void _showThemeDialog() {
     showDialog<void>(
       context: context,
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
+            void refresh() {
+              setDialogState(() {});
+              if (mounted) {
+                setState(() {});
+              }
+            }
+
+            Widget presetTile(AppThemePreset preset) {
+              return ListTile(
+                leading: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(colors: preset.gradient),
+                    border: Border.all(color: preset.accent, width: 3),
+                  ),
+                ),
+                title: Text(
+                  preset.name,
+                  style: const TextStyle(color: Colors.white),
+                ),
+                trailing: AppTheme.current.id == preset.id
+                    ? Icon(Icons.check, color: AppTheme.accent)
+                    : null,
+                onTap: () async {
+                  await AppTheme.setPreset(preset.id);
+                  refresh();
+                },
+              );
+            }
+
+            final custom = AppTheme.custom;
             return AlertDialog(
               backgroundColor: AppTheme.background,
               title: const Text('Theme', style: TextStyle(color: Colors.white)),
@@ -53,32 +209,51 @@ class _MoreScreenState extends State<MoreScreen> {
                 child: ListView(
                   shrinkWrap: true,
                   children: [
-                    for (final preset in AppTheme.presets)
-                      ListTile(
-                        leading: Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: LinearGradient(colors: preset.gradient),
-                            border: Border.all(color: preset.accent, width: 3),
-                          ),
-                        ),
-                        title: Text(
-                          preset.name,
-                          style: const TextStyle(color: Colors.white),
-                        ),
-                        trailing: AppTheme.current.id == preset.id
-                            ? Icon(Icons.check, color: preset.accent)
-                            : null,
-                        onTap: () async {
-                          await AppTheme.setPreset(preset.id);
-                          setDialogState(() {});
-                          if (mounted) {
-                            setState(() {});
-                          }
-                        },
+                    ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: AppTheme.accent,
+                        radius: 18,
                       ),
+                      title: const Text(
+                        'Accent color',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      subtitle: Text(
+                        AppTheme.accentOverride == null
+                            ? 'Follows the theme'
+                            : 'Custom',
+                        style: const TextStyle(
+                          color: Colors.white60,
+                          fontSize: 11,
+                        ),
+                      ),
+                      trailing: AppTheme.accentOverride == null
+                          ? null
+                          : TextButton(
+                              onPressed: () async {
+                                await AppTheme.setAccentOverride(null);
+                                refresh();
+                              },
+                              child: const Text(
+                                'Reset',
+                                style: TextStyle(color: Colors.white70),
+                              ),
+                            ),
+                      onTap: () => _pickAccent(refresh),
+                    ),
+                    const Divider(color: Colors.white24),
+                    for (final preset in AppTheme.presets) presetTile(preset),
+                    if (custom != null) presetTile(custom),
+                    ListTile(
+                      leading: const Icon(Icons.tune, color: Colors.white),
+                      title: Text(
+                        custom == null
+                            ? 'Create custom theme…'
+                            : 'Edit custom theme…',
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                      onTap: () => _editCustomTheme(refresh),
+                    ),
                   ],
                 ),
               ),
@@ -305,6 +480,23 @@ class _MoreScreenState extends State<MoreScreen> {
               style: const TextStyle(color: Colors.white60, fontSize: 11),
             ),
             onTap: _showThemeDialog,
+          ),
+          ValueListenableBuilder<bool>(
+            valueListenable: ViewSettings.folderFilter,
+            builder: (context, enabled, _) => SwitchListTile(
+              secondary: const Icon(Icons.folder, color: Colors.white),
+              title: const Text(
+                'Folder filter',
+                style: TextStyle(color: Colors.white),
+              ),
+              subtitle: const Text(
+                'Show a folder button in the Library to filter by folder',
+                style: TextStyle(color: Colors.white60, fontSize: 11),
+              ),
+              value: enabled,
+              activeThumbColor: AppTheme.accent,
+              onChanged: (value) => ViewSettings.setFolderFilter(value),
+            ),
           ),
           ListTile(
             leading: Icon(Icons.sd_card, color: Colors.white),

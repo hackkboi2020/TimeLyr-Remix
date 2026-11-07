@@ -13,6 +13,9 @@ import 'dart:typed_data';
 import '../services/download_manager.dart';
 import 'package:path/path.dart' as p;
 import 'package:timelyr/theme/app_theme.dart';
+import 'package:timelyr/utils/view_settings.dart';
+import 'package:timelyr/widgets/alphabet_scroller.dart';
+import 'package:timelyr/widgets/folder_filter_bar.dart';
 
 enum LyricFilter { all, noLyrics, lrcOnly, ttmlReady }
 
@@ -48,6 +51,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
   String? _artistFilter;
   String? _genreFilter;
   int? _yearFilter;
+  String? _folderFilter;
+  static const double _rowExtent = 105.0; // fixed row height: exact letter jumps
+  final Map<String, int> _letterFirstIndex = {};
+  String? _bubbleLetter;
+  Timer? _bubbleTimer;
   String _searchQuery = '';
   Timer? _searchDebounce;
   int _lyricStatusRefreshRequestId = 0;
@@ -56,6 +64,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
   void dispose() {
     _librarySub?.cancel();
     _searchDebounce?.cancel();
+    _bubbleTimer?.cancel();
+    ViewSettings.folderFilter.removeListener(_onViewSettingsChanged);
     super.dispose();
   }
 
@@ -64,7 +74,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
     super.initState();
     allSongs = FileService.librarySongs;
     filteredSongs = List.from(allSongs);
-    filteredSongs.sort((a, b) => a.title.compareTo(b.title));
+    filteredSongs.sort(
+      (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()),
+    );
+    _rebuildLetterIndex();
+    ViewSettings.folderFilter.addListener(_onViewSettingsChanged);
     _refreshSearchCache(allSongs);
     unawaited(_refreshLyricStatusCache(allSongs, reapplyFilters: true));
     // Escuchar cambios en la librería (p. ej. watcher en background)
@@ -94,10 +108,30 @@ class _LibraryScreenState extends State<LibraryScreen> {
     final lrcFile = File("${file.parent.path}/$filename.lrc");
     final ttmlFile = File("${file.parent.path}/$filename.ttml");
 
+    final hasLrc = await lrcFile.exists();
+    final wordSyncedLrc = hasLrc && await _lrcHasWordTags(lrcFile);
+
     return _LyricStatus(
-      hasLrc: await lrcFile.exists(),
-      hasTtml: await ttmlFile.exists(),
+      hasLrc: hasLrc,
+      hasTtml: wordSyncedLrc || await ttmlFile.exists(),
     );
+  }
+
+  /// True for "Enhanced LRC" (word-timed) files: <mm:ss.xx> tags near the top.
+  Future<bool> _lrcHasWordTags(File file) async {
+    try {
+      final handle = await file.open();
+      try {
+        final bytes = await handle.read(4096);
+        return RegExp(
+          r'<\d+:\d{1,2}(?:[.:]\d{1,3})?>',
+        ).hasMatch(String.fromCharCodes(bytes));
+      } finally {
+        await handle.close();
+      }
+    } catch (_) {
+      return false;
+    }
   }
 
   void _refreshSearchCache(List<Song> songs) {
@@ -233,8 +267,66 @@ class _LibraryScreenState extends State<LibraryScreen> {
           return false;
         }
 
+        if (ViewSettings.folderFilter.value &&
+            _folderFilter != null &&
+            !FolderIndex.contains(_folderFilter!, song.path)) {
+          return false;
+        }
+
         return matchesQuery && matchesLyricFilter;
-      }).toList();
+      }).toList()
+        ..sort(
+          (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()),
+        );
+      _rebuildLetterIndex();
+    });
+  }
+
+  void _onViewSettingsChanged() {
+    if (!mounted) return;
+    _applyFilters();
+  }
+
+  static String _bucketOf(String title) {
+    final t = title.trim();
+    if (t.isEmpty) return '#';
+    final c = t[0].toUpperCase();
+    return RegExp(r'^[A-Z]$').hasMatch(c) ? c : '#';
+  }
+
+  void _rebuildLetterIndex() {
+    _letterFirstIndex.clear();
+    for (var i = 0; i < filteredSongs.length; i++) {
+      _letterFirstIndex.putIfAbsent(_bucketOf(filteredSongs[i].title), () => i);
+    }
+  }
+
+  void _jumpToLetter(String letter) {
+    if (filteredSongs.isEmpty) return;
+    final letters = AlphabetScroller.letters;
+    int? index;
+    for (var i = letters.indexOf(letter); i < letters.length; i++) {
+      index = _letterFirstIndex[letters[i]];
+      if (index != null) break;
+    }
+    index ??= filteredSongs.length - 1;
+
+    final controller = PrimaryScrollController.of(context);
+    if (controller.hasClients) {
+      final target = (index * _rowExtent).clamp(
+        0.0,
+        controller.position.maxScrollExtent,
+      );
+      controller.jumpTo(target);
+    }
+    _bubbleTimer?.cancel();
+    setState(() => _bubbleLetter = letter);
+  }
+
+  void _hideBubbleSoon() {
+    _bubbleTimer?.cancel();
+    _bubbleTimer = Timer(const Duration(milliseconds: 600), () {
+      if (mounted) setState(() => _bubbleLetter = null);
     });
   }
 
@@ -409,6 +501,15 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 children: [searchBar(), filterBotton(), advancedFiltersButton()],
               ),
             ),
+            if (ViewSettings.folderFilter.value)
+              FolderFilterBar(
+                songs: allSongs,
+                selected: _folderFilter,
+                onChanged: (value) {
+                  _folderFilter = value;
+                  _applyFilters();
+                },
+              ),
             progressbar(dm),
             expandedlist(),
           ],
@@ -698,7 +799,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
               borderRadius: BorderRadius.circular(8),
             ),
             child: const Text(
-              "TTML ready",
+              "Word-synced",
               style: TextStyle(color: Colors.white),
             ),
           ),
@@ -774,7 +875,40 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 style: TextStyle(color: Colors.white70),
               ),
             )
-          : songlist(),
+          : Stack(
+              children: [
+                songlist(),
+                Positioned(
+                  right: 2,
+                  top: 0,
+                  bottom: 0,
+                  child: AlphabetScroller(
+                    onLetter: _jumpToLetter,
+                    onEnd: _hideBubbleSoon,
+                  ),
+                ),
+                if (_bubbleLetter != null)
+                  Center(
+                    child: Container(
+                      width: 72,
+                      height: 72,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: AppTheme.accent.withValues(alpha: 0.9),
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      child: Text(
+                        _bubbleLetter!,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 36,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
     );
   }
 
@@ -800,6 +934,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
       controller: primary,
       physics: const BouncingScrollPhysics(),
       itemCount: filteredSongs.length,
+      itemExtent: _rowExtent,
+      padding: const EdgeInsets.only(right: 18),
       itemBuilder: (_, i) {
         final song = filteredSongs[i];
 
@@ -933,7 +1069,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
     switch (state) {
       case SongLyricState.ttmlReady:
         return _stateChip(
-          label: 'TTML ready',
+          label: 'Word-synced',
           color: Colors.greenAccent,
         );
       case SongLyricState.lrcOnly:
