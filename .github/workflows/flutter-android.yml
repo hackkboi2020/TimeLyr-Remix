@@ -9,16 +9,16 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: '17'
@@ -31,24 +31,17 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
-      - name: Fix Android SDK (install cmdline-tools manually)
+      # Best effort: the hosted image already ships the Android SDK, and Gradle downloads
+      # whatever else it needs. A failure here must not stop the build.
+      - name: Install Android packages (best effort)
+        continue-on-error: true
         run: |
-          mkdir -p /usr/local/lib/android/sdk/cmdline-tools/latest
-          cd /usr/local/lib/android/sdk/cmdline-tools/latest
-          curl -L -o sdk.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
-          unzip sdk.zip
-          rm sdk.zip
-
-      - name: Install Android packages required
-        run: |
-          yes | /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager --licenses
-          /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager --install \
-            "platform-tools" \
-            "build-tools;34.0.0" \
-            "platforms;android-33" \
-            "platforms;android-34" \
-            "ndk;27.0.12077973" \
-            "cmake;3.22.1"
+          SDKMANAGER="$(command -v sdkmanager || true)"
+          if [[ -z "$SDKMANAGER" ]]; then
+            SDKMANAGER="${ANDROID_HOME:-/usr/local/lib/android/sdk}/cmdline-tools/latest/bin/sdkmanager"
+          fi
+          yes | "$SDKMANAGER" --licenses > /dev/null || true
+          "$SDKMANAGER" --install "platform-tools" "build-tools;34.0.0" "platforms;android-34" "ndk;27.0.12077973" "cmake;3.22.1" || true
 
       - name: Prepare signing keystore (optional)
         env:
