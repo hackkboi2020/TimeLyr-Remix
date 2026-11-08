@@ -498,6 +498,23 @@ class _MoreScreenState extends State<MoreScreen> {
               onChanged: (value) => ViewSettings.setFolderFilter(value),
             ),
           ),
+          ValueListenableBuilder<bool>(
+            valueListenable: ViewSettings.artworkAccent,
+            builder: (context, enabled, _) => SwitchListTile(
+              secondary: const Icon(Icons.color_lens, color: Colors.white),
+              title: const Text(
+                'Accent from artwork',
+                style: TextStyle(color: Colors.white),
+              ),
+              subtitle: const Text(
+                'The lyrics screen takes its colors from the album cover',
+                style: TextStyle(color: Colors.white60, fontSize: 11),
+              ),
+              value: enabled,
+              activeThumbColor: AppTheme.accent,
+              onChanged: (value) => ViewSettings.setArtworkAccent(value),
+            ),
+          ),
           ListTile(
             leading: Icon(Icons.sd_card, color: Colors.white),
             title: Text(

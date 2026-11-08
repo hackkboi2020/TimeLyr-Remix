@@ -53,6 +53,10 @@ class WordSyncProviders {
     'User-Agent': 'TimeLyr (lyrics downloader)',
     'Accept': 'application/json, text/plain, application/ttml+xml, */*',
   };
+  static const Map<String, String> _ttmlHeaders = {
+    'User-Agent': 'TimeLyr (lyrics downloader)',
+    'Accept': 'application/ttml+xml, application/xml',
+  };
 
   static final RegExp _wordTag = RegExp(r'<\d+:\d{1,2}(?:[.:]\d{1,3})?>');
   static final RegExp _lineTag = RegExp(r'\[\d+:\d{1,2}(?:[.:]\d{1,3})?\]');
@@ -237,10 +241,7 @@ class WordSyncProviders {
       final doc = await http
           .get(
             Uri.https('lrc.red', '/s/$isrc.ttml'),
-            headers: const {
-              ..._headers,
-              'Accept': 'application/ttml+xml, application/xml',
-            },
+            headers: _ttmlHeaders,
           )
           .timeout(_timeout);
       if (doc.statusCode != 200) return null;

@@ -10,6 +10,8 @@ import '../services/file_service.dart';
 import 'dart:typed_data';
 import 'package:path/path.dart' as p;
 import 'package:timelyr/theme/app_theme.dart';
+import 'package:timelyr/utils/artwork_accent.dart';
+import 'package:timelyr/utils/view_settings.dart';
 
 class LyricsViewer extends StatefulWidget {
   final Song song;
@@ -26,11 +28,29 @@ class _LyricsViewerState extends State<LyricsViewer> {
   bool downloading = false;
   Uint8List? artwork;
   bool noLyricsFound = false;
+  Color? _artAccent;
+
+  /// The cover's color when "Accent from artwork" is on, else the app accent.
+  Color get _accent =>
+      (ViewSettings.artworkAccent.value ? _artAccent : null) ?? AppTheme.accent;
 
   @override
   void initState() {
     super.initState();
     loadLyrics();
+    _loadArtAccent();
+  }
+
+  Future<void> _loadArtAccent() async {
+    if (!ViewSettings.artworkAccent.value) return;
+    try {
+      final bytes = await ArtworkCache.load(widget.song.path);
+      if (bytes == null) return;
+      final color = await ArtworkAccent.fromBytes(widget.song.path, bytes);
+      if (color != null && mounted) {
+        setState(() => _artAccent = color);
+      }
+    } catch (_) {}
   }
 
   Future<void> loadLyrics() async {
@@ -93,7 +113,11 @@ class _LyricsViewerState extends State<LyricsViewer> {
                     )
                   : null,
               gradient: LinearGradient(
-                colors: [AppTheme.background, AppTheme.backgroundAlt],
+                colors: [
+                  AppTheme.background,
+                  Color.lerp(AppTheme.backgroundAlt, _accent, 0.22) ??
+                      AppTheme.backgroundAlt,
+                ],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
               ),
@@ -229,7 +253,7 @@ class _LyricsViewerState extends State<LyricsViewer> {
 
                 // Botón descagar letra si no existe LRC
                 downloading
-                    ? const CircularProgressIndicator(color: Colors.white)
+                    ? CircularProgressIndicator(color: _accent)
                     : //noLyricsFound,
                       ElevatedButton.icon(
                         onPressed: () async {
@@ -261,7 +285,7 @@ class _LyricsViewerState extends State<LyricsViewer> {
                           style: TextStyle(color: Colors.white),
                         ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.accent,
+                          backgroundColor: _accent,
                         ),
                       ),
 

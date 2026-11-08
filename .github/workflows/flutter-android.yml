@@ -60,12 +60,19 @@ jobs:
           ANDROID_SIGNING_KEY_ALIAS: ${{ secrets.ANDROID_SIGNING_KEY_ALIAS }}
           ANDROID_SIGNING_KEY_PASSWORD: ${{ secrets.ANDROID_SIGNING_KEY_PASSWORD }}
         run: |
+          set -o pipefail
           # On a v* tag, the tag becomes the app's version name (v1.2.4 -> 1.2.4).
           EXTRA=""
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             EXTRA="--build-name=${GITHUB_REF_NAME#v}"
           fi
-          flutter build apk --release --split-per-abi --build-number=$((GITHUB_RUN_NUMBER + 100)) $EXTRA
+          flutter build apk --release --split-per-abi --build-number=$((GITHUB_RUN_NUMBER + 100)) $EXTRA 2>&1 | tee build.log
+
+      # Prints compile errors as annotations so they show on the run summary page.
+      - name: Show build errors
+        if: failure()
+        run: |
+          grep -E "(Error|error):" build.log | head -20 | while IFS= read -r line; do echo "::error::${line}"; done || true
  
       - name: Upload APK
         uses: actions/upload-artifact@v4
