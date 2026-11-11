@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:timelyr/models/song.dart';
+import 'package:timelyr/services/file_service.dart';
 import 'package:timelyr/theme/app_theme.dart';
+import 'package:timelyr/utils/view_settings.dart';
 
 /// A folder that contains songs (directly or in subfolders).
 class FolderNode {
@@ -19,47 +21,15 @@ class FolderNode {
 }
 
 class FolderIndex {
-  /// Every folder with songs under the common root, with recursive song
-  /// counts. Parents come before their children.
-  static List<FolderNode> build(List<Song> songs) {
-    final dirs = songs
-        .map((s) => p.dirname(s.path))
-        .where((d) => d.isNotEmpty && d != '.')
-        .toList();
-    if (dirs.isEmpty) return const [];
-
-    final root = _commonDir(dirs);
-    final counts = <String, int>{};
-    for (final dir in dirs) {
-      var current = dir;
-      while (current.length > root.length && current.startsWith(root)) {
-        counts[current] = (counts[current] ?? 0) + 1;
-        final parent = p.dirname(current);
-        if (parent == current) break;
-        current = parent;
-      }
-    }
-
-    final paths = counts.keys.toList()
-      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
-    return [
-      for (final path in paths)
-        FolderNode(
-          path: path,
-          name: p.basename(path),
-          depth: _depth(path, root),
-          count: counts[path]!,
-        ),
-    ];
+  static String? _dir(Song song) {
+    final d = p.dirname(song.path);
+    return d.isEmpty || d == '.' ? null : d;
   }
 
-  static int _depth(String path, String root) {
-    var rest = path.length > root.length ? path.substring(root.length) : '';
-    rest = rest.replaceAll(RegExp(r'^/+|/+$'), '');
-    return rest.isEmpty ? 0 : '/'.allMatches(rest).length;
-  }
-
-  static String _commonDir(List<String> dirs) {
+  /// The longest folder that contains every song ('' when unknown).
+  static String rootOf(List<Song> songs) {
+    final dirs = songs.map(_dir).whereType<String>().toList();
+    if (dirs.isEmpty) return '';
     var prefix = dirs.first;
     for (final dir in dirs) {
       while (!(dir == prefix || dir.startsWith('$prefix/'))) {
@@ -71,111 +41,139 @@ class FolderIndex {
     return prefix;
   }
 
-  static bool contains(String folder, String songPath) =>
-      songPath.startsWith('$folder/');
+  /// Immediate subfolders of [dir] that hold songs, with recursive counts.
+  static List<FolderNode> children(List<Song> songs, String dir) {
+    final counts = <String, int>{};
+    final prefix = '$dir/';
+    for (final song in songs) {
+      final d = _dir(song);
+      if (d == null || !d.startsWith(prefix)) continue;
+      final child = prefix + d.substring(prefix.length).split('/').first;
+      counts[child] = (counts[child] ?? 0) + 1;
+    }
+    final paths = counts.keys.toList()
+      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+    return [
+      for (final path in paths)
+        FolderNode(path: path, name: p.basename(path), depth: 0, count: counts[path]!),
+    ];
+  }
+
+  /// Every folder that holds songs (parents first) with recursive counts.
+  static List<FolderNode> all(List<Song> songs) {
+    final root = rootOf(songs);
+    final counts = <String, int>{};
+    for (final song in songs) {
+      var current = _dir(song);
+      while (current != null && current.length > root.length && current.startsWith(root)) {
+        counts[current] = (counts[current] ?? 0) + 1;
+        final parent = p.dirname(current);
+        current = parent == current ? null : parent;
+      }
+    }
+    final paths = counts.keys.toList()
+      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+    return [
+      for (final path in paths)
+        FolderNode(
+          path: path,
+          name: p.basename(path),
+          depth: _depthOf(path, root),
+          count: counts[path]!,
+        ),
+    ];
+  }
+
+  static int _depthOf(String path, String root) {
+    var rest = path.length > root.length ? path.substring(root.length) : '';
+    rest = rest.replaceAll(RegExp(r'^/+|/+$'), '');
+    return rest.isEmpty ? 0 : '/'.allMatches(rest).length;
+  }
+
+  static bool isExcluded(String songPath, Set<String> excluded) {
+    if (excluded.isEmpty) return false;
+    for (final folder in excluded) {
+      if (songPath.startsWith('$folder/')) return true;
+    }
+    return false;
+  }
 }
 
-/// Chip that shows the active folder filter; tapping opens the folder list.
-class FolderFilterBar extends StatelessWidget {
-  final List<Song> songs;
-  final String? selected;
-  final ValueChanged<String?> onChanged;
-
-  const FolderFilterBar({
-    super.key,
-    required this.songs,
-    required this.selected,
-    required this.onChanged,
-  });
-
-  Future<void> _openList(BuildContext context, List<FolderNode> nodes) async {
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        Widget row(String label, int depth, bool isSelected, String? value) {
-          return InkWell(
-            onTap: () {
-              onChanged(value);
-              Navigator.of(dialogContext).pop();
-            },
-            child: Padding(
-              padding: EdgeInsets.only(
-                left: depth * 16.0,
-                top: 10,
-                bottom: 10,
-                right: 8,
-              ),
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: isSelected ? AppTheme.accent : Colors.white,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                ),
-              ),
+/// Lets the user pick folders to hide from the Library.
+Future<void> showExcludedFoldersDialog(BuildContext context) {
+  final nodes = FolderIndex.all(FileService.librarySongs);
+  return showDialog<void>(
+    context: context,
+    builder: (dialogContext) {
+      return ValueListenableBuilder<Set<String>>(
+        valueListenable: ViewSettings.excludedFolders,
+        builder: (context, excluded, _) {
+          return AlertDialog(
+            backgroundColor: AppTheme.background,
+            title: const Text(
+              'Hide folders',
+              style: TextStyle(color: Colors.white),
             ),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: nodes.isEmpty
+                  ? const Text(
+                      'No songs in the Library yet.',
+                      style: TextStyle(color: Colors.white70),
+                    )
+                  : ListView(
+                      shrinkWrap: true,
+                      children: [
+                        for (final node in nodes)
+                          Builder(
+                            builder: (context) {
+                              final coveredByParent = excluded.any(
+                                (e) => node.path.startsWith('$e/'),
+                              );
+                              final checked =
+                                  coveredByParent || excluded.contains(node.path);
+                              return Padding(
+                                padding: EdgeInsets.only(left: node.depth * 16.0),
+                                child: CheckboxListTile(
+                                  dense: true,
+                                  contentPadding: EdgeInsets.zero,
+                                  controlAffinity: ListTileControlAffinity.leading,
+                                  activeColor: AppTheme.accent,
+                                  checkColor: Colors.white,
+                                  value: checked,
+                                  onChanged: coveredByParent
+                                      ? null
+                                      : (value) {
+                                          final next = Set<String>.of(excluded);
+                                          if (value == true) {
+                                            next.add(node.path);
+                                          } else {
+                                            next.remove(node.path);
+                                          }
+                                          ViewSettings.setExcludedFolders(next);
+                                        },
+                                  title: Text(
+                                    '${node.name} (${node.count})',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(color: Colors.white),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                      ],
+                    ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('Close', style: TextStyle(color: Colors.white)),
+              ),
+            ],
           );
-        }
-
-        return AlertDialog(
-          backgroundColor: AppTheme.background,
-          title: const Text('Folders', style: TextStyle(color: Colors.white)),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: ListView(
-              shrinkWrap: true,
-              children: [
-                row('All folders (${songs.length})', 0, selected == null, null),
-                for (final node in nodes)
-                  row(
-                    '${node.name} (${node.count})',
-                    node.depth + 1,
-                    selected == node.path,
-                    node.path,
-                  ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Close', style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final nodes = FolderIndex.build(songs);
-    if (nodes.isEmpty) return const SizedBox.shrink();
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      child: Row(
-        children: [
-          ActionChip(
-            avatar: const Icon(Icons.folder, size: 18, color: Colors.white),
-            label: Text(
-              selected == null ? 'All folders' : p.basename(selected!),
-              style: const TextStyle(color: Colors.white),
-              overflow: TextOverflow.ellipsis,
-            ),
-            backgroundColor: Colors.white.withValues(alpha: 0.1),
-            side: BorderSide.none,
-            onPressed: () => _openList(context, nodes),
-          ),
-          if (selected != null)
-            IconButton(
-              tooltip: 'Show all folders',
-              icon: const Icon(Icons.close, color: Colors.white70),
-              onPressed: () => onChanged(null),
-            ),
-        ],
-      ),
-    );
-  }
+        },
+      );
+    },
+  );
 }

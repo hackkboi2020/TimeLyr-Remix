@@ -51,7 +51,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
   String? _artistFilter;
   String? _genreFilter;
   int? _yearFilter;
-  String? _folderFilter;
+  String? _currentFolder;
+  String _rootDir = '';
+  String _activeDir = '';
+  bool _inFolderView = false;
+  List<FolderNode> _childFolders = const [];
   static const double _rowExtent = 105.0; // fixed row height: exact letter jumps
   final Map<String, int> _letterFirstIndex = {};
   String? _bubbleLetter;
@@ -65,25 +69,29 @@ class _LibraryScreenState extends State<LibraryScreen> {
     _librarySub?.cancel();
     _searchDebounce?.cancel();
     _bubbleTimer?.cancel();
-    ViewSettings.folderFilter.removeListener(_onViewSettingsChanged);
+    ViewSettings.folderView.removeListener(_onViewSettingsChanged);
+    ViewSettings.statusTags.removeListener(_onViewSettingsChanged);
+    ViewSettings.excludedFolders.removeListener(_onViewSettingsChanged);
     super.dispose();
   }
 
   @override
   void initState() {
     super.initState();
-    allSongs = FileService.librarySongs;
+    allSongs = _visibleLibrary();
     filteredSongs = List.from(allSongs);
     filteredSongs.sort(
       (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()),
     );
     _rebuildLetterIndex();
-    ViewSettings.folderFilter.addListener(_onViewSettingsChanged);
+    ViewSettings.folderView.addListener(_onViewSettingsChanged);
+    ViewSettings.statusTags.addListener(_onViewSettingsChanged);
+    ViewSettings.excludedFolders.addListener(_onViewSettingsChanged);
     _refreshSearchCache(allSongs);
     unawaited(_refreshLyricStatusCache(allSongs, reapplyFilters: true));
     // Escuchar cambios en la librería (p. ej. watcher en background)
     _librarySub = FileService.libraryUpdateController.stream.listen((_) {
-      allSongs = FileService.librarySongs;
+      allSongs = _visibleLibrary();
       _refreshSearchCache(allSongs);
       _applyFilters();
       unawaited(_refreshLyricStatusCache(allSongs, reapplyFilters: true));
@@ -224,8 +232,37 @@ class _LibraryScreenState extends State<LibraryScreen> {
     });
   }
 
+  /// The Library without the folders the user chose to hide.
+  List<Song> _visibleLibrary() {
+    final excluded = ViewSettings.excludedFolders.value;
+    return FileService.librarySongs
+        .where((song) => !FolderIndex.isExcluded(song.path, excluded))
+        .toList();
+  }
+
+  void _goUpFolder() {
+    final current = _currentFolder;
+    if (current == null) return;
+    final parent = p.dirname(current);
+    _currentFolder = parent.length > _rootDir.length ? parent : null;
+    _applyFilters();
+  }
+
   void _applyFilters() {
     final normalizedQuery = _searchQuery.toLowerCase();
+    // Folder view: browse like a file manager (only while not searching)
+    _rootDir = FolderIndex.rootOf(allSongs);
+    if (_currentFolder != null && !_currentFolder!.startsWith(_rootDir)) {
+      _currentFolder = null;
+    }
+    _activeDir = _currentFolder ?? _rootDir;
+    _inFolderView =
+        ViewSettings.folderView.value &&
+        normalizedQuery.isEmpty &&
+        _rootDir.isNotEmpty;
+    _childFolders = _inFolderView
+        ? FolderIndex.children(allSongs, _activeDir)
+        : const [];
     setState(() {
       filteredSongs = allSongs.where((song) {
         final lyricStatus =
@@ -267,9 +304,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
           return false;
         }
 
-        if (ViewSettings.folderFilter.value &&
-            _folderFilter != null &&
-            !FolderIndex.contains(_folderFilter!, song.path)) {
+        if (_inFolderView && p.dirname(song.path) != _activeDir) {
           return false;
         }
 
@@ -301,6 +336,95 @@ class _LibraryScreenState extends State<LibraryScreen> {
     }
   }
 
+  int get _extraRows =>
+      _inFolderView ? _childFolders.length + (_currentFolder != null ? 1 : 0) : 0;
+
+  Widget _folderTile({
+    required IconData icon,
+    required String name,
+    String? trailing,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        height: 89,
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: AppTheme.accent, size: 30),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            if (trailing != null)
+              Text(trailing, style: const TextStyle(color: Colors.white54)),
+            const Icon(Icons.chevron_right, color: Colors.white54),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _folderCrumb() {
+    final rel = _activeDir == _rootDir
+        ? p.basename(_rootDir)
+        : p.relative(_activeDir, from: _rootDir);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 2),
+      child: Row(
+        children: [
+          Icon(Icons.folder_open, size: 16, color: AppTheme.accent),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              rel,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: Colors.white70, fontSize: 12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget refreshButton() {
+    return IconButton(
+      tooltip: 'Refresh',
+      icon: const Icon(Icons.refresh, color: Colors.white),
+      onPressed: _refreshLibrary,
+    );
+  }
+
+  Future<void> _refreshLibrary() async {
+    allSongs = _visibleLibrary();
+    _refreshSearchCache(allSongs);
+    _applyFilters();
+    await _refreshLyricStatusCache(allSongs, reapplyFilters: true);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Library refreshed.'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
   void _jumpToLetter(String letter) {
     if (filteredSongs.isEmpty) return;
     final letters = AlphabetScroller.letters;
@@ -313,7 +437,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
     final controller = PrimaryScrollController.of(context);
     if (controller.hasClients) {
-      final target = (index * _rowExtent).clamp(
+      final target = ((index + _extraRows) * _rowExtent).clamp(
         0.0,
         controller.position.maxScrollExtent,
       );
@@ -476,7 +600,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return GradientBackground(
+    return PopScope(
+      canPop: !(_inFolderView && _currentFolder != null),
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _goUpFolder();
+      },
+      child: GradientBackground(
       child: Scaffold(
         backgroundColor: AppTheme.background,
         appBar: AppBar(
@@ -498,24 +627,21 @@ class _LibraryScreenState extends State<LibraryScreen> {
             Padding(
               padding: const EdgeInsets.all(12),
               child: Row(
-                children: [searchBar(), filterBotton(), advancedFiltersButton()],
+                children: [
+                  searchBar(),
+                  filterBotton(),
+                  advancedFiltersButton(),
+                  refreshButton(),
+                ],
               ),
             ),
-            if (ViewSettings.folderFilter.value)
-              FolderFilterBar(
-                songs: allSongs,
-                selected: _folderFilter,
-                onChanged: (value) {
-                  _folderFilter = value;
-                  _applyFilters();
-                },
-              ),
+            if (_inFolderView) _folderCrumb(),
             progressbar(dm),
             expandedlist(),
           ],
         ), //progressbar(dm),
       ),
-    );
+    ));
   }
 
   Widget filterBotton() {
@@ -813,7 +939,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
               borderRadius: BorderRadius.circular(8),
             ),
             child: const Text(
-              "LRC only",
+              "Line-synced",
               style: TextStyle(color: Colors.white),
             ),
           ),
@@ -827,7 +953,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
               borderRadius: BorderRadius.circular(8),
             ),
             child: const Text(
-              "No lyrics",
+              "Not downloaded",
               style: TextStyle(color: Colors.white),
             ),
           ),
@@ -933,10 +1059,31 @@ class _LibraryScreenState extends State<LibraryScreen> {
       //controller: _scrollController,
       controller: primary,
       physics: const BouncingScrollPhysics(),
-      itemCount: filteredSongs.length,
+      itemCount: _extraRows + filteredSongs.length,
       itemExtent: _rowExtent,
       padding: const EdgeInsets.only(right: 18),
-      itemBuilder: (_, i) {
+      itemBuilder: (_, rawIndex) {
+        if (rawIndex < _extraRows) {
+          final hasUp = _currentFolder != null;
+          if (hasUp && rawIndex == 0) {
+            return _folderTile(
+              icon: Icons.drive_folder_upload,
+              name: '..',
+              onTap: _goUpFolder,
+            );
+          }
+          final node = _childFolders[rawIndex - (hasUp ? 1 : 0)];
+          return _folderTile(
+            icon: Icons.folder,
+            name: node.name,
+            trailing: '${node.count}',
+            onTap: () {
+              _currentFolder = node.path;
+              _applyFilters();
+            },
+          );
+        }
+        final i = rawIndex - _extraRows;
         final song = filteredSongs[i];
 
         return GestureDetector(
@@ -1031,9 +1178,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
         const SizedBox(width: 12),
 
-        _buildLyricStateChip(songState),
-
-        const SizedBox(width: 8),
+        if (ViewSettings.statusTags.value) ...[
+          _buildLyricStateChip(songState),
+          const SizedBox(width: 8),
+        ],
 
         // Descarga / loader / check
         (songState == SongLyricState.ttmlReady)
@@ -1074,12 +1222,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
         );
       case SongLyricState.lrcOnly:
         return _stateChip(
-          label: 'LRC only',
+          label: 'Line-synced',
           color: Colors.amberAccent,
         );
       case SongLyricState.noLyrics:
         return _stateChip(
-          label: 'No lyrics',
+          label: 'Not downloaded',
           color: Colors.white60,
         );
     }

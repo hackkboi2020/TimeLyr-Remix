@@ -71,13 +71,55 @@ class WordSyncProviders {
     WordSyncStats? stats,
   }) async {
     final s = stats ?? WordSyncStats();
-    final results = await Future.wait<WordSyncResult?>([
-      _lyricsPlus(q, s),
-      _lrcRed(q, s),
-      _musixmatch(q, s),
-      _betterLyrics(q, s),
-    ]);
-    return results.whereType<WordSyncResult>().toList();
+    final futures = <Future<WordSyncResult?>>[];
+    for (final variant in _variants(q)) {
+      futures.addAll([
+        _lyricsPlus(variant, s),
+        _lrcRed(variant, s),
+        _musixmatch(variant, s),
+        _betterLyrics(variant, s),
+      ]);
+    }
+    final results = await Future.wait<WordSyncResult?>(futures);
+    // Same lyrics found through two spellings of the artist count once
+    final seen = <String>{};
+    final unique = <WordSyncResult>[];
+    for (final r in results.whereType<WordSyncResult>()) {
+      if (seen.add('${r.source}|${r.content.hashCode}')) unique.add(r);
+    }
+    return unique;
+  }
+
+  /// The tags as given, then the cleaned title with each credited artist on its own.
+  /// Songs by several artists (A, B / A & B) are often listed under just one of them.
+  static List<WordSyncQuery> _variants(WordSyncQuery q) {
+    final out = <WordSyncQuery>[q];
+    final title = cleanTrackTitle(q.title);
+    void add(String t, String artist) {
+      final a = artist.trim();
+      if (a.isEmpty) return;
+      final candidate = WordSyncQuery(
+        title: t,
+        artist: a,
+        album: q.album,
+        durationSec: q.durationSec,
+        isrc: q.isrc,
+      );
+      if (!out.any((o) => o.title == candidate.title && o.artist == candidate.artist)) {
+        out.add(candidate);
+      }
+    }
+
+    add(title, q.artist);
+    final artists = q.artist.split(
+      RegExp(r'\s*(?:,|;|/|&|\bfeat\.?|\bft\.?|\bfeaturing\b)\s*', caseSensitive: false),
+    );
+    if (artists.length > 1) {
+      for (final a in artists) {
+        add(title, a);
+      }
+    }
+    return out.take(4).toList();
   }
 
   /// Tries providers one after another and stops at the first hit

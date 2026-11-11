@@ -70,3 +70,28 @@ String searchArtist(String artist) {
   ).first;
   return a.trim();
 }
+
+/// Lyrics as readable text: drops [mm:ss.xx] and <mm:ss.xx> timing, skips [ar:]-style
+/// tags, and shows [bg:...] background vocals as (indented lines in brackets).
+String cleanLyricsForDisplay(String raw) {
+  final out = <String>[];
+  final bgLine = RegExp(r'^\[bg:(.*)\]$', caseSensitive: false);
+  final metaTag = RegExp(r'^\[[A-Za-z]+:.*\]$');
+  final lineTime = RegExp(r'\[\d+:\d{1,2}(?:[.:]\d{1,3})?\]');
+  final wordTime = RegExp(r'<\d+:\d{1,2}(?:[.:]\d{1,3})?>');
+  for (final line in raw.split('\n')) {
+    final t = line.trim();
+    final bg = bgLine.firstMatch(t);
+    if (bg == null && metaTag.hasMatch(t)) continue;
+    final text = (bg != null ? bg.group(1)! : t)
+        .replaceAll(lineTime, '')
+        .replaceAll(wordTime, '')
+        .trim();
+    if (text.isEmpty) {
+      if (out.isNotEmpty && out.last.isNotEmpty) out.add('');
+      continue;
+    }
+    out.add(bg != null ? '   ($text)' : text);
+  }
+  return out.join('\n').trim();
+}

@@ -12,6 +12,8 @@ import 'package:path/path.dart' as p;
 import 'package:timelyr/theme/app_theme.dart';
 import 'package:timelyr/utils/artwork_accent.dart';
 import 'package:timelyr/utils/view_settings.dart';
+import 'package:timelyr/utils/lyrics_utils.dart';
+import 'package:timelyr/services/word_sync_providers.dart';
 
 class LyricsViewer extends StatefulWidget {
   final Song song;
@@ -29,6 +31,7 @@ class _LyricsViewerState extends State<LyricsViewer> {
   Uint8List? artwork;
   bool noLyricsFound = false;
   Color? _artAccent;
+  String? _syncLabel; // Word-synced / Line-synced / Plain text
 
   /// The cover's color when "Accent from artwork" is on, else the app accent.
   Color get _accent =>
@@ -40,6 +43,12 @@ class _LyricsViewerState extends State<LyricsViewer> {
     loadLyrics();
     _loadArtAccent();
   }
+
+  Color get _syncColor => _syncLabel == 'Word-synced'
+      ? Colors.greenAccent
+      : _syncLabel == 'Line-synced'
+      ? Colors.amberAccent
+      : Colors.white54;
 
   Future<void> _loadArtAccent() async {
     if (!ViewSettings.artworkAccent.value) return;
@@ -60,7 +69,14 @@ class _LyricsViewerState extends State<LyricsViewer> {
     final lrcPath = "${file.parent.path}/$filename.lrc";
 
     if (File(lrcPath).existsSync()) {
-      lyrics = await File(lrcPath).readAsString();
+      final raw = await File(lrcPath).readAsString();
+      final hasTtml = File("${file.parent.path}/$filename.ttml").existsSync();
+      _syncLabel = hasTtml || WordSyncProviders.hasWordTags(raw)
+          ? 'Word-synced'
+          : RegExp(r'\[\d+:\d{2}').hasMatch(raw)
+          ? 'Line-synced'
+          : 'Plain text';
+      lyrics = cleanLyricsForDisplay(raw);
       // Intento de guardar/actualizar también el TTML desde Lyrics+
       try {
         FileService.saveTTMLForSong(widget.song.path, widget.song);
@@ -73,6 +89,7 @@ class _LyricsViewerState extends State<LyricsViewer> {
     // Si no existe → intentar descargar
     final result = await LyricsService.fetchLyrics(widget.song);
 
+    _syncLabel = null;
     lyrics = result;
     setState(() => loading = false);
   }
@@ -242,6 +259,31 @@ class _LyricsViewerState extends State<LyricsViewer> {
                               color: Colors.white54,
                             ),
                           ),
+                          if (_syncLabel != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 6),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: _syncColor.withValues(alpha: 0.16),
+                                  borderRadius: BorderRadius.circular(999),
+                                  border: Border.all(
+                                    color: _syncColor.withValues(alpha: 0.45),
+                                  ),
+                                ),
+                                child: Text(
+                                  _syncLabel!,
+                                  style: TextStyle(
+                                    color: _syncColor,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
                         ],
                       ),
                     ),

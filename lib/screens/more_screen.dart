@@ -7,6 +7,7 @@ import 'package:timelyr/widgets/scan_music.dart';
 import 'package:timelyr/widgets/select_directory.dart';
 import '../services/backup_service.dart';
 import '../utils/view_settings.dart';
+import '../widgets/folder_filter_bar.dart';
 import '../widgets/color_picker_dialog.dart';
 import '../utils/ttml_miss_cache.dart';
 import '../services/notifications_settings.dart';
@@ -405,6 +406,21 @@ class _MoreScreenState extends State<MoreScreen> {
     );
   }
 
+  Widget _categoryHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 22, bottom: 4, left: 8),
+      child: Text(
+        title.toUpperCase(),
+        style: TextStyle(
+          color: AppTheme.accent,
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 1.2,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -449,29 +465,7 @@ class _MoreScreenState extends State<MoreScreen> {
               ),
             ),
           ),
-          SizedBox(height: 30),
-          ListTile(
-            leading: notificationsEnable == true
-                ? Icon(Icons.notifications_on, color: Colors.white)
-                : Icon(Icons.notifications_off, color: Colors.white),
-            title: Text(
-              'Notifications',
-              style: TextStyle(color: Colors.white),
-            ),
-            trailing: Switch(
-              value: notificationsEnable,
-              activeThumbColor: AppTheme.accent,
-              activeTrackColor: AppTheme.accent.withValues(alpha: 0.25),
-              inactiveThumbColor: Colors.white70,
-              inactiveTrackColor: Colors.white24,
-              onChanged: (v) async {
-                // Acción al tocar "Notificaciones"
-                notificationsEnable = v;
-                await NotificationSettings.setEnabled(v);
-                setState(() {});
-              },
-            ),
-          ),
+          _categoryHeader('Appearance'),
           ListTile(
             leading: Icon(Icons.palette, color: Colors.white),
             title: Text('Theme', style: TextStyle(color: Colors.white)),
@@ -480,23 +474,6 @@ class _MoreScreenState extends State<MoreScreen> {
               style: const TextStyle(color: Colors.white60, fontSize: 11),
             ),
             onTap: _showThemeDialog,
-          ),
-          ValueListenableBuilder<bool>(
-            valueListenable: ViewSettings.folderFilter,
-            builder: (context, enabled, _) => SwitchListTile(
-              secondary: const Icon(Icons.folder, color: Colors.white),
-              title: const Text(
-                'Folder filter',
-                style: TextStyle(color: Colors.white),
-              ),
-              subtitle: const Text(
-                'Show a folder button in the Library to filter by folder',
-                style: TextStyle(color: Colors.white60, fontSize: 11),
-              ),
-              value: enabled,
-              activeThumbColor: AppTheme.accent,
-              onChanged: (value) => ViewSettings.setFolderFilter(value),
-            ),
           ),
           ValueListenableBuilder<bool>(
             valueListenable: ViewSettings.artworkAccent,
@@ -515,6 +492,7 @@ class _MoreScreenState extends State<MoreScreen> {
               onChanged: (value) => ViewSettings.setArtworkAccent(value),
             ),
           ),
+          _categoryHeader('Library'),
           ListTile(
             leading: Icon(Icons.sd_card, color: Colors.white),
             title: Text(
@@ -527,6 +505,16 @@ class _MoreScreenState extends State<MoreScreen> {
                 context: context,
                 builder: (context) => SelectDirectory(),
               );
+            },
+          ),
+          ListTile(
+            leading: Icon(Icons.search, color: Colors.white),
+            title: Text(
+              'Scan music',
+              style: TextStyle(color: Colors.white),
+            ),
+            onTap: () {
+              showDialog(context: context, builder: (context) => ScanMusic());
             },
           ),
           ListTile(
@@ -552,15 +540,79 @@ class _MoreScreenState extends State<MoreScreen> {
               },
             ),
           ),
+          ValueListenableBuilder<bool>(
+            valueListenable: ViewSettings.folderView,
+            builder: (context, enabled, _) => SwitchListTile(
+              secondary: const Icon(Icons.folder, color: Colors.white),
+              title: const Text(
+                'Folder view',
+                style: TextStyle(color: Colors.white),
+              ),
+              subtitle: const Text(
+                'Browse the Library by folder, like a file manager',
+                style: TextStyle(color: Colors.white60, fontSize: 11),
+              ),
+              value: enabled,
+              activeThumbColor: AppTheme.accent,
+              onChanged: (value) => ViewSettings.setFolderView(value),
+            ),
+          ),
+          ValueListenableBuilder<Set<String>>(
+            valueListenable: ViewSettings.excludedFolders,
+            builder: (context, excluded, _) => ListTile(
+              leading: const Icon(Icons.folder_off, color: Colors.white),
+              title: const Text(
+                'Excluded folders',
+                style: TextStyle(color: Colors.white),
+              ),
+              subtitle: Text(
+                excluded.isEmpty
+                    ? 'No folders hidden from the Library'
+                    : '${excluded.length} hidden from the Library',
+                style: const TextStyle(color: Colors.white60, fontSize: 11),
+              ),
+              onTap: () => showExcludedFoldersDialog(context),
+            ),
+          ),
+          ValueListenableBuilder<bool>(
+            valueListenable: ViewSettings.statusTags,
+            builder: (context, enabled, _) => SwitchListTile(
+              secondary: const Icon(Icons.sell, color: Colors.white),
+              title: const Text(
+                'Lyric status tags',
+                style: TextStyle(color: Colors.white),
+              ),
+              subtitle: const Text(
+                'Show Word-synced, Line-synced or Not downloaded on each song',
+                style: TextStyle(color: Colors.white60, fontSize: 11),
+              ),
+              value: enabled,
+              activeThumbColor: AppTheme.accent,
+              onChanged: (value) => ViewSettings.setStatusTags(value),
+            ),
+          ),
+          _categoryHeader('Lyrics & downloads'),
           ListTile(
-            leading: Icon(Icons.search, color: Colors.white),
+            leading: notificationsEnable == true
+                ? Icon(Icons.notifications_on, color: Colors.white)
+                : Icon(Icons.notifications_off, color: Colors.white),
             title: Text(
-              'Scan music',
+              'Notifications',
               style: TextStyle(color: Colors.white),
             ),
-            onTap: () {
-              showDialog(context: context, builder: (context) => ScanMusic());
-            },
+            trailing: Switch(
+              value: notificationsEnable,
+              activeThumbColor: AppTheme.accent,
+              activeTrackColor: AppTheme.accent.withValues(alpha: 0.25),
+              inactiveThumbColor: Colors.white70,
+              inactiveTrackColor: Colors.white24,
+              onChanged: (v) async {
+                // Acción al tocar "Notificaciones"
+                notificationsEnable = v;
+                await NotificationSettings.setEnabled(v);
+                setState(() {});
+              },
+            ),
           ),
           ListTile(
             leading: Icon(Icons.healing, color: Colors.orangeAccent),
@@ -594,6 +646,7 @@ class _MoreScreenState extends State<MoreScreen> {
               );
             },
           ),
+          _categoryHeader('Backup'),
           ListTile(
             leading: Icon(Icons.upload_file, color: Colors.white),
             title: Text(
@@ -618,6 +671,7 @@ class _MoreScreenState extends State<MoreScreen> {
             ),
             onTap: _importBackup,
           ),
+          _categoryHeader('About'),
           ListTile(
             leading: Icon(Icons.info, color: Colors.white),
             title: Text('About', style: TextStyle(color: Colors.white)),
